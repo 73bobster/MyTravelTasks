@@ -1,0 +1,28 @@
+/* Cobalt Pink Software brand tokens — values read from cobaltpinksoftware.com.
+   Keep in sync with the shared site stylesheet. */
+@font-face { font-family: 'Sora'; font-weight: 400; font-style: normal; font-display: swap; src: url('/assets/fonts/sora-400.woff2') format('woff2'); }
+@font-face { font-family: 'Sora'; font-weight: 600; font-style: normal; font-display: swap; src: url('/assets/fonts/sora-600.woff2') format('woff2'); }
+@font-face { font-family: 'Sora'; font-weight: 700; font-style: normal; font-display: swap; src: url('/assets/fonts/sora-700.woff2') format('woff2'); }
+@font-face { font-family: 'Sora'; font-weight: 800; font-style: normal; font-display: swap; src: url('/assets/fonts/sora-800.woff2') format('woff2'); }
+
+:root {
+  --cobalt: #0047AB;
+  --pink: #FF0066;
+  --indigo: #0A1A40;
+  --slate: #4F5D75;
+  --mist: #F1F3F5;
+  --line: #E3E7EC;
+  --card-dark: #0F2350;
+  --sky: #9DBBFF;
+  --pink-soft: #FF6FA5;
+  --pink-tint: #FFE3EE;
+  --gutter: clamp(16px, 5vw, 32px);
+  --font: Sora, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px;
+
+  /* Status colours. Deliberately not the brand pink, so "red" never reads as "brand".
+     Status is always shown with a text label as well as colour. */
+  --rag-green: #0F7B43;  --rag-green-bg: #E3F5EA;  --rag-green-dot: #16A34A;
+  --rag-amber: #8A4B00;  --rag-amber-bg: #FFF0CC;  --rag-amber-dot: #F59E0B;
+  --rag-red:   #B42318;  --rag-red-bg:   #FEE4E2;  --rag-red-dot:   #DC2626;
+}

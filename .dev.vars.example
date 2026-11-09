@@ -1,0 +1,3 @@
+# Copy to .dev.vars (git-ignored) for local development with `npm run dev`.
+# Use the pooled connection string from your Neon project (ideally a dev branch), not production.
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require

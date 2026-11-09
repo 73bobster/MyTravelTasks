@@ -1,0 +1,711 @@
+import {
+  TRIP_TYPES, TRANSPORT, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
+  taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
+} from './core.js';
+import {
+  GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
+} from './store.js';
+
+const COUNTRIES = ['Albania', 'Australia', 'Austria', 'Belgium', 'Bulgaria', 'Canada', 'Croatia', 'Cyprus', 'Czechia', 'Denmark',
+  'Dominican Republic', 'Egypt', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'India', 'Ireland',
+  'Italy', 'Jamaica', 'Japan', 'Kenya', 'Latvia', 'Lithuania', 'Malta', 'Mexico', 'Morocco', 'Netherlands', 'New Zealand',
+  'Norway', 'Poland', 'Portugal', 'Romania', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'Spain', 'Sweden',
+  'Switzerland', 'Thailand', 'Turkey', 'United Arab Emirates', 'United States'];
+
+const state = {
+  ready: false, user: null, store: null, trips: [], offline: false,
+  view: 'when', owner: 'all', open: new Set(),
+  draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
+  toast: '', installEvent: null, lastKey: '',
+};
+
+const $app = () => document.getElementById('app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const findTrip = (id) => state.trips.find((t) => t.id === id);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const shortTitle = (s, n = 44) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
+const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>';
+
+// ---------- toast ----------
+let toastTimer;
+function toast(msg) {
+  state.toast = msg;
+  render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { state.toast = ''; render(); }, 3500);
+}
+
+// ---------- routing ----------
+function route() {
+  const parts = (location.hash.replace(/^#/, '') || '/').split('/').filter(Boolean);
+  if (!parts.length) return { name: 'home' };
+  if (parts[0] === 'new') return { name: 'new' };
+  if (parts[0] === 'trip' && parts[1]) return parts[2] === 'edit' ? { name: 'edit', id: parts[1] } : { name: 'trip', id: parts[1] };
+  if (parts[0] === 'signin') return { name: 'auth', mode: 'login' };
+  if (parts[0] === 'register') return { name: 'auth', mode: 'register' };
+  if (parts[0] === 'account') return { name: 'account' };
+  return { name: 'home' };
+}
+
+// ---------- shared view bits ----------
+function tripDates(trip) {
+  const nights = daysBetween(trip.startDate, trip.endDate);
+  return `${shortDate(trip.startDate)} – ${shortDate(trip.endDate)} ${trip.endDate.slice(0, 4)} · ${plural(nights, 'night')}`;
+}
+const where = (trip) => [trip.destination, trip.scope === 'abroad' ? trip.country : ''].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') || (trip.scope === 'abroad' ? 'Abroad' : 'UK');
+function overallPill(sum) {
+  if (sum.finished) return '<span class="pill neutral">Finished</span>';
+  return `<span class="pill rag-${sum.overall}">${esc(sum.overallLabel)}</span>`;
+}
+
+function layout(inner) {
+  const nav = [
+    state.installEvent ? '<button type="button" data-action="install">Install app</button>' : '',
+    state.user ? '<a href="#/account">Account</a>' : '<a href="#/signin">Sign in</a>',
+  ].join('');
+  return `
+    ${state.offline ? '<div class="offline-bar" role="status">You are offline. You can read your trips; changes need a connection.</div>' : ''}
+    <header class="app-header"><div class="container">
+      <a class="brand" href="#/"><img src="/icons/icon-192.png" alt="" width="30" height="30"> My Travel Tasks</a>
+      <nav class="nav" aria-label="Main">${nav}</nav>
+    </div></header>
+    <main class="container" id="main" tabindex="-1">${inner}</main>
+    <footer class="app-footer">A <a href="https://cobaltpinksoftware.com">Cobalt Pink Software</a> app</footer>
+    ${state.toast ? `<div class="toast" role="status">${esc(state.toast)}</div>` : ''}`;
+}
+
+// ---------- home ----------
+function viewHome() {
+  const today = todayISO();
+  const rows = state.trips
+    .map((t) => ({ t, s: tripSummary(t, t.tasks, today) }))
+    .sort((a, b) => (a.s.finished - b.s.finished) || a.t.startDate.localeCompare(b.t.startDate));
+
+  const banner = state.user ? '' : `
+    <section class="card tint" aria-label="Guest mode">
+      <h2>You're using My Travel Tasks as a guest</h2>
+      <p class="small">Your trips are saved on this device only. Create a free account to keep them safe and open them on any device.</p>
+      <div class="actions"><a class="btn btn-primary btn-small" href="#/register">Create free account</a><a class="btn btn-secondary btn-small" href="#/signin">Sign in</a></div>
+    </section>`;
+
+  if (!rows.length) {
+    return `<div class="stack">${banner}
+      <section class="card empty">
+        <h2>Where are you off to?</h2>
+        <p class="muted">Answer a few questions about your trip and get a dated checklist, a countdown and a clear view of what is still holding you up.</p>
+        <a class="btn btn-primary" href="#/new">Plan your first trip</a>
+      </section></div>`;
+  }
+
+  return `<div class="stack">
+    <div class="row between"><h1>Your trips</h1><a class="btn btn-primary" href="#/new">Plan a trip</a></div>
+    ${banner}
+    ${rows.map(({ t, s }) => `
+      <a class="card trip-card" href="#/trip/${esc(t.id)}">
+        <div class="row between"><h2>${esc(t.name)}</h2>${overallPill(s)}</div>
+        <div class="meta">${esc(where(t))} · ${esc(tripDates(t))}</div>
+        <div class="row between small">
+          <strong>${esc(s.countdown.label)}</strong>
+          <span class="muted">${s.done} of ${s.total} done</span>
+        </div>
+        <progress max="100" value="${s.pct}" aria-label="${s.pct}% of tasks done"></progress>
+      </a>`).join('')}
+  </div>`;
+}
+
+// ---------- trip dashboard ----------
+function ownerList(trip) {
+  const names = new Set();
+  for (const t of trip.tasks) names.add(t.owner);
+  for (const t of trip.travellers) if (t.name) names.add(t.name);
+  names.add('Everyone');
+  return [...names];
+}
+
+function taskRow(trip, task, today) {
+  const all = trip.tasks;
+  const done = task.status === 'done';
+  const rag = taskRag(task, all, today);
+  const waiting = done ? [] : blockedBy(task, all);
+  const open = state.open.has(task.id);
+  const dueCls = rag === 'red' || rag === 'amber' ? `rag-${rag}` : '';
+  const owners = ownerList(trip);
+  if (!owners.includes(task.owner)) owners.push(task.owner);
+
+  return `
+  <li class="task ${done ? 'done' : `rag-${rag}`}" data-task="${esc(task.id)}">
+    <button type="button" class="check" role="checkbox" aria-checked="${done}" aria-label="${done ? 'Mark not done' : 'Mark done'}: ${esc(task.title)}" data-action="toggle" data-id="${esc(task.id)}">${TICK}</button>
+    <div class="task-main">
+      <button type="button" class="task-title" aria-expanded="${open}" data-action="expand" data-id="${esc(task.id)}">${esc(task.title)}</button>
+      <div class="task-meta">
+        <span class="chip">${esc(task.owner)}</span>
+        ${done ? '<span>Done</span>' : `<span class="due ${dueCls}">${esc(dueLabel(task.dueDate, today))}</span>`}
+        ${task.isKey && !done ? '<span class="chip key">Key</span>' : ''}
+        ${waiting.length ? `<span class="chip waiting">Waiting on: ${esc(waiting.slice(0, 2).map((w) => w.title.replace(/^(Apply for|Check|Find|Book|Get)\s+/i, '')).join(', '))}${waiting.length > 2 ? '…' : ''}</span>` : ''}
+      </div>
+      ${open ? `
+      <div class="task-detail">
+        ${task.hint ? `<p class="hint">${esc(task.hint)}</p>` : ''}
+        <div class="two">
+          <label class="field">Who
+            <select data-field="owner" data-id="${esc(task.id)}">${owners.map((o) => `<option ${o === task.owner ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
+          </label>
+          <label class="field">Due
+            <input type="date" data-field="dueDate" data-id="${esc(task.id)}" value="${esc(task.dueDate || '')}">
+          </label>
+        </div>
+        <label class="field">Notes
+          <textarea data-field="notes" data-id="${esc(task.id)}" placeholder="Booking reference, links, who to call…">${esc(task.notes)}</textarea>
+        </label>
+        <div><button type="button" class="btn btn-ghost btn-small" data-action="delete-task" data-id="${esc(task.id)}">Remove task</button></div>
+      </div>` : ''}
+    </div>
+  </li>`;
+}
+
+function viewTrip(id) {
+  const trip = findTrip(id);
+  if (!trip) return `<div class="card empty"><h2>We can't find that trip</h2><p class="muted">It may have been deleted, or it lives in a different account.</p><a class="btn btn-primary" href="#/">Back to your trips</a></div>`;
+
+  const today = todayISO();
+  const sum = tripSummary(trip, trip.tasks, today);
+  const blockers = sum.finished ? [] : keyBlockers(trip.tasks, today, 4);
+  const owners = ownerList(trip).filter((o) => trip.tasks.some((t) => t.owner === o));
+  const filtered = state.owner === 'all' ? trip.tasks : trip.tasks.filter((t) => t.owner === state.owner);
+  const groups = state.view === 'stage' ? groupByStage(filtered) : groupByWhen(filtered, today);
+  const openCount = (o) => trip.tasks.filter((t) => t.owner === o && t.status !== 'done').length;
+
+  const list = groups.map((g) => {
+    const rows = `<ul class="tasks">${g.tasks.map((t) => taskRow(trip, t, today)).join('')}</ul>`;
+    if (state.view === 'when' && g.id === 'done') return `<details class="done-group"><summary>Done (${g.tasks.length})</summary>${rows}</details>`;
+    return `<section class="group"><h3>${esc(g.label)} <span class="count">${g.tasks.length}</span></h3>${rows}</section>`;
+  }).join('');
+
+  return `<div class="stack">
+    <div><a href="#/" class="small">← All trips</a></div>
+
+    <section class="hero on-dark" aria-label="Trip status">
+      <div class="count"><div class="big">${esc(sum.countdown.big)}</div><div class="unit">${esc(sum.countdown.unit)}</div></div>
+      <div>
+        <h1>${esc(trip.name)}</h1>
+        <div class="meta">${esc(where(trip))} · ${esc(tripDates(trip))}</div>
+        ${overallPill(sum)}
+        <div class="progress-line"><progress max="100" value="${sum.pct}" aria-label="${sum.pct}% of tasks done"></progress>
+          ${sum.done} of ${sum.total} done${sum.overdue ? ` · ${plural(sum.overdue, 'task')} overdue` : ''}</div>
+      </div>
+    </section>
+
+    ${blockers.length ? `
+    <section class="card blockers" aria-label="Key dependencies">
+      <h2>What's holding you up</h2>
+      <p class="small muted">Sort these first. They unlock other tasks or are due soon.</p>
+      <ul>${blockers.map((b) => {
+        const names = b.blocks.slice(0, 1).map((x) => shortTitle(x.title, 36)).join('; ');
+        const more = b.blocks.length - 1;
+        const sub = [dueLabel(b.task.dueDate, today), b.blocks.length ? `holding up ${plural(b.blocks.length, 'task')}` : ''].filter(Boolean).join(' · ');
+        return `
+        <li><span class="dot rag-${b.rag}" aria-hidden="true"></span>
+          <div class="msg"><strong>${esc(b.task.title)}</strong>
+            <span class="sub">${esc(sub)}</span>
+            ${names ? `<span class="sub">Unlocks: ${esc(names)}${more > 0 ? ` +${more} more` : ''}</span>` : ''}</div>
+          <button type="button" class="btn btn-secondary btn-small" data-action="toggle" data-id="${esc(b.task.id)}" aria-label="Mark done: ${esc(b.task.title)}">Done</button></li>`;
+      }).join('')}
+      </ul>
+    </section>` : ''}
+
+    <div class="row between">
+      <div class="chips" role="group" aria-label="Filter by person">
+        <button type="button" class="chip" aria-pressed="${state.owner === 'all'}" data-action="owner" data-value="all">Everyone's tasks</button>
+        ${owners.map((o) => `<button type="button" class="chip" aria-pressed="${state.owner === o}" data-action="owner" data-value="${esc(o)}">${esc(o)} (${openCount(o)})</button>`).join('')}
+      </div>
+      <div class="segmented" role="group" aria-label="Group tasks">
+        <button type="button" aria-pressed="${state.view === 'when'}" data-action="view" data-value="when">By date</button>
+        <button type="button" aria-pressed="${state.view === 'stage'}" data-action="view" data-value="stage">By stage</button>
+      </div>
+    </div>
+
+    ${list || '<p class="muted">No tasks for this person.</p>'}
+
+    <details class="card add-task">
+      <summary>Add your own task</summary>
+      <form data-form="add-task" data-id="${esc(trip.id)}">
+        <label class="field">Task<input type="text" name="title" required maxlength="200" placeholder="e.g. Buy a guidebook"></label>
+        <div class="two">
+          <label class="field">Who<select name="owner">${ownerList(trip).map((o) => `<option>${esc(o)}</option>`).join('')}</select></label>
+          <label class="field">Due<input type="date" name="dueDate"></label>
+        </div>
+        <div><button class="btn btn-primary btn-small" type="submit">Add task</button></div>
+      </form>
+    </details>
+
+    <div class="actions">
+      <a class="btn btn-secondary btn-small" href="#/trip/${esc(trip.id)}/edit">Edit trip details</a>
+      <button type="button" class="btn btn-danger btn-small" data-action="delete-trip" data-id="${esc(trip.id)}">Delete trip</button>
+    </div>
+  </div>`;
+}
+
+// ---------- trip form ----------
+function myName() { return (state.user?.name || '').split(' ')[0] || 'Me'; }
+
+function newDraft() {
+  return {
+    name: '', type: 'holiday', who: 'me', scope: 'uk', destination: '', country: '', startDate: '', endDate: '',
+    organiser: myName(), transport: [],
+    travellers: [{ name: myName(), role: 'adult', passport: 'yes', isMe: true }],
+    options: { visa: 'unsure', stay: 'need', carHire: false, drivingAbroad: false, handLuggageOnly: false, childConsent: false, pets: 'none' },
+  };
+}
+function draftFromTrip(trip) {
+  const n = normaliseTrip(trip);
+  const hasMe = n.travellers.some((t) => t.isMe);
+  return { ...n, who: !hasMe ? 'others' : n.travellers.length > 1 ? 'group' : 'me' };
+}
+function setWho(who) {
+  const d = state.draft;
+  const blank = () => ({ name: '', role: 'adult', passport: 'unsure' });
+  d.who = who;
+  if (who === 'me') {
+    const me = d.travellers.find((t) => t.isMe) || { name: myName(), role: 'adult', passport: 'yes' };
+    d.travellers = [{ ...me, isMe: true }];
+  } else if (who === 'group') {
+    if (!d.travellers.some((t) => t.isMe)) d.travellers.unshift({ name: myName(), role: 'adult', passport: 'yes', isMe: true });
+    if (d.travellers.length < 2) d.travellers.push(blank());
+  } else {
+    d.travellers = d.travellers.filter((t) => !t.isMe);
+    if (!d.travellers.length) d.travellers.push(blank());
+    d.organiser = myName();
+  }
+}
+
+const radio = (path, value, label, help, current) =>
+  `<label class="choice"><input type="radio" name="${path}" data-d="${path}" value="${esc(value)}" ${String(current) === String(value) ? 'checked' : ''}><span>${esc(label)}${help ? `<span class="help">${esc(help)}</span>` : ''}</span></label>`;
+const option = (value, label, current) => `<option value="${esc(value)}" ${value === current ? 'selected' : ''}>${esc(label)}</option>`;
+
+function viewForm(editingId) {
+  const d = state.draft;
+  const abroad = d.scope === 'abroad';
+  const flying = d.transport.includes('flight');
+  const driving = d.transport.includes('car') || d.options.carHire;
+  const anyChild = d.travellers.some((t) => t.role !== 'adult');
+  const today = todayISO();
+  const o = d.options;
+
+  return `
+  <form data-form="trip" class="stack" novalidate>
+    <div><a href="${editingId ? `#/trip/${esc(editingId)}` : '#/'}" class="small">← Cancel</a></div>
+    <h1>${editingId ? 'Edit trip' : 'Plan a trip'}</h1>
+    ${editingId ? '<p class="notice">Your progress, notes and any changes you made to tasks are kept. Tasks that no longer apply are removed and new ones are added.</p>' : ''}
+    ${state.formErrors.length ? `<div class="error" role="alert"><ul>${state.formErrors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>` : ''}
+
+    <fieldset class="card">
+      <legend>The trip</legend>
+      <label class="field">What shall we call it?<input type="text" data-d="name" value="${esc(d.name)}" maxlength="80" placeholder="e.g. Lisbon with the kids" autocomplete="off"></label>
+      <label class="field">What kind of trip is it?
+        <select data-d="type">${TRIP_TYPES.map((t) => option(t.id, t.label, d.type)).join('')}</select></label>
+      <div>
+        <div class="field" id="who-label">Who is it for?</div>
+        <div class="choices cols" role="radiogroup" aria-labelledby="who-label">
+          ${radio('who', 'me', 'Just me', '', d.who)}
+          ${radio('who', 'group', 'Me and others', 'Family, friends, colleagues', d.who)}
+          ${radio('who', 'others', "Someone else", "I'm organising it for them", d.who)}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>When and where</legend>
+      <div class="two">
+        <label class="field">First day<input type="date" data-d="startDate" value="${esc(d.startDate)}" ${editingId ? '' : `min="${today}"`}></label>
+        <label class="field">Last day<input type="date" data-d="endDate" value="${esc(d.endDate)}" min="${esc(d.startDate)}"></label>
+      </div>
+      <div class="choices cols" role="radiogroup" aria-label="Where to">
+        ${radio('scope', 'uk', 'In the UK', '', d.scope)}
+        ${radio('scope', 'abroad', 'Abroad', 'Passports, entry rules, insurance', d.scope)}
+      </div>
+      <label class="field">Where are you going?<input type="text" data-d="destination" value="${esc(d.destination)}" maxlength="80" placeholder="e.g. Lisbon" autocomplete="off"></label>
+      ${abroad ? `
+      <label class="field">Country<input type="text" data-d="country" value="${esc(d.country)}" maxlength="60" list="countries" placeholder="e.g. Portugal" autocomplete="off">
+        <datalist id="countries">${COUNTRIES.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
+      <label class="field">Do you need a visa or travel authorisation?
+        <span class="help">Rules differ by nationality. If you're not sure, we'll add a task to check first.</span>
+        <select data-d="options.visa">${option('unsure', "Not sure yet", o.visa)}${option('no', 'No', o.visa)}${option('yes', 'Yes', o.visa)}</select></label>` : ''}
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>Who's going</legend>
+      ${d.travellers.map((t, i) => `
+      <div class="traveller">
+        <div class="grid">
+          <label class="field">Name<input type="text" data-t="${i}.name" value="${esc(t.name)}" maxlength="40" placeholder="Name" autocomplete="off"></label>
+          <label class="field">Age group<select data-t="${i}.role">${option('adult', 'Adult', t.role)}${option('child', 'Child', t.role)}${option('infant', 'Infant (under 2)', t.role)}</select></label>
+        </div>
+        ${abroad ? `<label class="field">Passport<select data-t="${i}.passport">${option('yes', 'Has a passport', t.passport)}${option('no', "Doesn't have one yet", t.passport)}${option('unsure', 'Not sure', t.passport)}</select></label>` : ''}
+        ${t.isMe ? '<span class="small muted">This is you</span>' : (d.travellers.length > 1 ? `<div><button type="button" class="btn btn-ghost btn-small" data-action="rm-traveller" data-i="${i}">Remove</button></div>` : '')}
+      </div>`).join('')}
+      <div><button type="button" class="btn btn-secondary btn-small" data-action="add-traveller">+ Add a traveller</button></div>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>How you're getting there</legend>
+      <div class="choices cols compact">
+        ${TRANSPORT.map((t) => `<label class="choice"><input type="checkbox" data-list="transport" value="${t.id}" ${d.transport.includes(t.id) ? 'checked' : ''}><span>${t.label}</span></label>`).join('')}
+      </div>
+      <div>
+        <div class="field" id="stay-label">Where are you staying?</div>
+        <div class="choices cols" role="radiogroup" aria-labelledby="stay-label">
+          ${radio('options.stay', 'need', 'Still to book', '', o.stay)}
+          ${radio('options.stay', 'booked', 'Already booked', '', o.stay)}
+          ${radio('options.stay', 'none', 'Staying with friends or family', '', o.stay)}
+        </div>
+      </div>
+      <div class="choices">
+        <label class="choice"><input type="checkbox" data-d="options.carHire" ${o.carHire ? 'checked' : ''}><span>I'll hire a car</span></label>
+        ${abroad && driving ? `<label class="choice"><input type="checkbox" data-d="options.drivingAbroad" ${o.drivingAbroad ? 'checked' : ''}><span>I'll be driving abroad</span></label>` : ''}
+        ${flying ? `<label class="choice"><input type="checkbox" data-d="options.handLuggageOnly" ${o.handLuggageOnly ? 'checked' : ''}><span>Hand luggage only</span></label>` : ''}
+        ${abroad && anyChild ? `<label class="choice"><input type="checkbox" data-d="options.childConsent" ${o.childConsent ? 'checked' : ''}><span>Children travelling without both parents<span class="help">Adds a consent letter task</span></span></label>` : ''}
+      </div>
+      <label class="field">Pets
+        <select data-d="options.pets">${option('none', 'No pets to sort', o.pets)}${option('sitter', 'Pets staying home (need care)', o.pets)}${option('travelling', 'Pets are coming too', o.pets)}</select></label>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>${state.busy ? 'Saving…' : editingId ? 'Save changes' : 'Create my checklist'}</button>
+    </div>
+  </form>`;
+}
+
+function setPath(obj, path, value) {
+  const keys = path.split('.');
+  const last = keys.pop();
+  const target = keys.reduce((o, k) => o[k], obj);
+  target[last] = value;
+}
+
+// ---------- auth + account ----------
+function viewAuth(mode) {
+  const register = mode === 'register';
+  const hasGuest = guestTrips().length > 0;
+  return `<div class="stack">
+    <h1>${register ? 'Create your free account' : 'Sign in'}</h1>
+    <p class="muted">${register ? 'Keep your trips safe and open them on any device.' : 'Welcome back.'}</p>
+    ${state.authError ? `<div class="error" role="alert">${esc(state.authError)}</div>` : ''}
+    <form class="card" data-form="auth" data-mode="${mode}">
+      ${register ? '<label class="field">Your name <span class="help">Optional. Used to label your own tasks.</span><input type="text" name="name" autocomplete="given-name" maxlength="60"></label>' : ''}
+      <label class="field">Email<input type="email" name="email" required autocomplete="email"></label>
+      <label class="field">Password${register ? '<span class="help">At least 10 characters.</span>' : ''}<input type="password" name="password" required minlength="${register ? 10 : 1}" autocomplete="${register ? 'new-password' : 'current-password'}"></label>
+      ${hasGuest ? `<label class="choice"><input type="checkbox" name="bring" checked><span>Bring my ${plural(guestTrips().length, 'guest trip')} with me</span></label>` : ''}
+      <div class="actions"><button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>${state.busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}</button></div>
+    </form>
+    <p class="small">${register ? 'Already have an account? <a href="#/signin">Sign in</a>' : 'New here? <a href="#/register">Create a free account</a>'}</p>
+  </div>`;
+}
+
+function viewAccount() {
+  if (!state.user) return `<div class="card empty"><h2>You're not signed in</h2><a class="btn btn-primary" href="#/signin">Sign in</a></div>`;
+  return `<div class="stack">
+    <h1>Your account</h1>
+    <section class="card"><p><strong>${esc(state.user.name || 'Signed in')}</strong><br><span class="muted">${esc(state.user.email)}</span></p>
+      <p class="small muted">${plural(state.trips.length, 'trip')} saved to your account.</p>
+      <div class="actions"><button class="btn btn-secondary btn-small" data-action="export">Download my data</button><button class="btn btn-secondary btn-small" data-action="signout">Sign out</button></div>
+    </section>
+    <section class="card">
+      <h2>Delete my account</h2>
+      <p class="small muted">This permanently deletes your account and all your trips. It can't be undone.</p>
+      ${state.authError ? `<div class="error" role="alert">${esc(state.authError)}</div>` : ''}
+      <form data-form="delete-account">
+        <label class="field">Confirm with your password<input type="password" name="password" required autocomplete="current-password"></label>
+        <div><button class="btn btn-danger btn-small" type="submit">Delete account and trips</button></div>
+      </form>
+    </section>
+  </div>`;
+}
+
+// ---------- render ----------
+export function render() {
+  const el = $app();
+  if (!el) return;
+  const r = route();
+  if (r.name !== 'new' && r.name !== 'edit') { state.draft = null; state.draftFor = null; state.formErrors = []; }
+  if (r.name !== 'auth' && r.name !== 'account') state.authError = '';
+
+  let html;
+  let title = 'My Travel Tasks';
+  if (!state.ready) html = '<p class="muted">Loading…</p>';
+  else if (r.name === 'new') {
+    if (!state.draft || state.draftFor !== 'new') { state.draft = newDraft(); state.draftFor = 'new'; state.formErrors = []; }
+    html = viewForm(null); title = 'Plan a trip · My Travel Tasks';
+  } else if (r.name === 'edit') {
+    const trip = findTrip(r.id);
+    if (!trip) html = viewTrip(r.id);
+    else {
+      if (!state.draft || state.draftFor !== r.id) { state.draft = draftFromTrip(trip); state.draftFor = r.id; state.formErrors = []; }
+      html = viewForm(r.id); title = 'Edit trip · My Travel Tasks';
+    }
+  } else if (r.name === 'trip') { html = viewTrip(r.id); title = `${findTrip(r.id)?.name || 'Trip'} · My Travel Tasks`; }
+  else if (r.name === 'auth') { html = viewAuth(r.mode); title = (r.mode === 'register' ? 'Create account' : 'Sign in') + ' · My Travel Tasks'; }
+  else if (r.name === 'account') { html = viewAccount(); title = 'Account · My Travel Tasks'; }
+  else html = viewHome();
+
+  el.innerHTML = layout(html);
+  document.title = title;
+
+  const key = JSON.stringify(r);
+  if (key !== state.lastKey) {
+    state.lastKey = key;
+    window.scrollTo?.(0, 0);
+    document.getElementById('main')?.focus?.({ preventScroll: true });
+  }
+}
+
+// ---------- actions ----------
+async function loadTrips() {
+  try {
+    state.trips = await state.store.list();
+    state.offline = !!state.store.offline;
+  } catch (e) {
+    state.trips = [];
+    toast(e.message);
+  }
+}
+
+async function patchTask(tripId, taskId, patch, { quiet = false } = {}) {
+  const trip = findTrip(tripId);
+  const i = trip?.tasks.findIndex((t) => t.id === taskId);
+  if (!trip || i < 0) return;
+  const before = trip.tasks[i];
+  trip.tasks[i] = applyPatch(before, patch);
+  if (!quiet) render();
+  try {
+    const saved = await state.store.patchTask(tripId, taskId, patch);
+    const j = trip.tasks.findIndex((t) => t.id === taskId);
+    if (j >= 0 && saved) trip.tasks[j] = { ...trip.tasks[j], ...saved };
+    if (!quiet) render();
+  } catch (e) {
+    const j = trip.tasks.findIndex((t) => t.id === taskId);
+    if (j >= 0) trip.tasks[j] = before;
+    toast(e.message);
+  }
+}
+
+async function submitTrip() {
+  const d = state.draft;
+  const { errors, trip } = validateTrip(d);
+  if (errors.length) { state.formErrors = errors; render(); window.scrollTo?.(0, 0); return; }
+  state.busy = true; state.formErrors = []; render();
+  try {
+    const generated = generateTasks(trip, todayISO());
+    let saved;
+    if (state.draftFor !== 'new') {
+      const existing = findTrip(state.draftFor);
+      saved = await state.store.update(state.draftFor, trip, mergeTasks(existing.tasks, generated));
+      state.trips = state.trips.map((t) => (t.id === saved.id ? saved : t));
+    } else {
+      saved = await state.store.create(trip, generated);
+      state.trips.push(saved);
+    }
+    state.busy = false; state.draft = null; state.draftFor = null;
+    state.owner = 'all';
+    location.hash = `#/trip/${saved.id}`;
+    render();
+  } catch (e) {
+    state.busy = false; state.formErrors = [e.message]; render(); window.scrollTo?.(0, 0);
+  }
+}
+
+async function submitAuth(form) {
+  const mode = form.dataset.mode;
+  const fd = new FormData(form);
+  state.busy = true; state.authError = ''; render();
+  try {
+    const { user } = await api(mode === 'register' ? '/auth/register' : '/auth/login', {
+      method: 'POST', body: { email: fd.get('email'), password: fd.get('password'), name: fd.get('name') || '' },
+    });
+    state.user = user;
+    state.store = new ApiStore();
+    let note = mode === 'register' ? 'Account created' : 'Signed in';
+    if (fd.get('bring') === 'on') {
+      try { await importGuestTrips(); note += ', and your guest trips are saved'; }
+      catch (e) { note += `, but your guest trips could not be moved (${e.message})`; }
+    }
+    await loadTrips();
+    state.busy = false;
+    location.hash = '#/';
+    toast(note);
+  } catch (e) {
+    state.busy = false; state.authError = e.message; render();
+  }
+}
+
+async function signOut() {
+  try { await api('/auth/logout', { method: 'POST' }); } catch { /* cookie is cleared server side when online */ }
+  forgetSession();
+  state.user = null; state.store = new GuestStore(); state.offline = false;
+  await loadTrips();
+  location.hash = '#/';
+  toast('Signed out');
+}
+
+async function deleteAccount(form) {
+  const password = new FormData(form).get('password');
+  state.authError = '';
+  try {
+    await api('/me', { method: 'DELETE', body: { password } });
+    forgetSession();
+    state.user = null; state.store = new GuestStore();
+    await loadTrips();
+    location.hash = '#/';
+    toast('Your account has been deleted');
+  } catch (e) {
+    state.authError = e.message; render();
+  }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), trips: state.trips }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-travel-tasks.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function addTask(form) {
+  const tripId = form.dataset.id;
+  const fd = new FormData(form);
+  const title = String(fd.get('title') || '').trim();
+  if (!title) return;
+  try {
+    const task = await state.store.addTask(tripId, {
+      title, category: 'My tasks', owner: fd.get('owner') || 'Everyone', dueDate: fd.get('dueDate') || null, notes: '',
+    });
+    findTrip(tripId).tasks.push(task);
+    render();
+    toast('Task added');
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- events ----------
+const REDRAW_PATHS = new Set(['scope', 'who', 'options.carHire']);
+
+function onClick(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const { action, id, value } = el.dataset;
+  const r = route();
+  switch (action) {
+    case 'toggle': patchTask(r.id, id, { status: findTrip(r.id)?.tasks.find((t) => t.id === id)?.status === 'done' ? 'todo' : 'done' }); break;
+    case 'expand': state.open.has(id) ? state.open.delete(id) : state.open.add(id); render(); break;
+    case 'owner': state.owner = value; render(); break;
+    case 'view': state.view = value; render(); break;
+    case 'delete-task':
+      if (confirm('Remove this task?')) {
+        const trip = findTrip(r.id);
+        state.store.removeTask(r.id, id).then(() => { trip.tasks = trip.tasks.filter((t) => t.id !== id); render(); }).catch((err) => toast(err.message));
+      }
+      break;
+    case 'delete-trip':
+      if (confirm('Delete this trip and all its tasks? This cannot be undone.')) {
+        state.store.remove(id).then(() => { state.trips = state.trips.filter((t) => t.id !== id); location.hash = '#/'; render(); toast('Trip deleted'); }).catch((err) => toast(err.message));
+      }
+      break;
+    case 'add-traveller':
+      state.draft.travellers.push({ name: '', role: 'adult', passport: 'unsure' });
+      if (state.draft.who === 'me') state.draft.who = 'group';
+      render();
+      [...document.querySelectorAll('[data-t$=".name"]')].pop()?.focus();
+      break;
+    case 'rm-traveller': {
+      const i = Number(el.dataset.i);
+      state.draft.travellers.splice(i, 1);
+      render();
+      break;
+    }
+    case 'signout': signOut(); break;
+    case 'export': exportData(); break;
+    case 'install': state.installEvent?.prompt(); state.installEvent = null; render(); break;
+    default: break;
+  }
+}
+
+function onInput(e) {
+  const el = e.target;
+  if (!state.draft) return;
+  if (el.matches('[data-d]') && (el.type === 'text' || el.type === 'date')) setPath(state.draft, el.dataset.d, el.value);
+  if (el.matches('[data-t]') && el.type === 'text') {
+    const [i, field] = el.dataset.t.split('.');
+    state.draft.travellers[Number(i)][field] = el.value;
+  }
+}
+
+function onChange(e) {
+  const el = e.target;
+  // task detail fields
+  if (el.matches('[data-field]')) {
+    const { field, id } = el.dataset;
+    const patch = field === 'dueDate' ? { dueDate: el.value || null } : { [field]: el.value };
+    patchTask(route().id, id, patch, { quiet: field === 'notes' });
+    return;
+  }
+  if (!state.draft) return;
+  if (el.matches('[data-list]')) {
+    const list = state.draft[el.dataset.list];
+    const at = list.indexOf(el.value);
+    if (el.checked && at < 0) list.push(el.value);
+    if (!el.checked && at >= 0) list.splice(at, 1);
+    render();
+    return;
+  }
+  if (el.matches('[data-t]')) {
+    const [i, field] = el.dataset.t.split('.');
+    state.draft.travellers[Number(i)][field] = el.value;
+    if (field === 'role') render();
+    return;
+  }
+  if (el.matches('[data-d]') && el.type !== 'text' && el.type !== 'date') {
+    const path = el.dataset.d;
+    const value = el.type === 'checkbox' ? el.checked : el.value;
+    if (path === 'who') setWho(value); else setPath(state.draft, path, value);
+    if (REDRAW_PATHS.has(path)) render();
+  }
+}
+
+function onSubmit(e) {
+  const form = e.target.closest('form[data-form]');
+  if (!form) return;
+  e.preventDefault();
+  switch (form.dataset.form) {
+    case 'trip': submitTrip(); break;
+    case 'auth': submitAuth(form); break;
+    case 'add-task': addTask(form); break;
+    case 'delete-account': deleteAccount(form); break;
+    default: break;
+  }
+}
+
+// ---------- boot ----------
+export async function boot() {
+  const { user, offline } = await getSession();
+  state.user = user;
+  state.store = user ? new ApiStore() : new GuestStore();
+  await loadTrips();
+  state.offline = user ? offline || state.offline : false; // guests work fully offline, so no warning for them
+  state.ready = true;
+
+  const root = $app();
+  root.addEventListener('click', onClick);
+  root.addEventListener('input', onInput);
+  root.addEventListener('change', onChange);
+  root.addEventListener('submit', onSubmit);
+  window.addEventListener('hashchange', render);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+  window.addEventListener('beforeinstallprompt', (ev) => { ev.preventDefault(); state.installEvent = ev; render(); });
+  window.addEventListener('online', async () => { if (state.offline) { await loadTrips(); render(); } });
+
+  render();
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+export { state };
+if (typeof document !== 'undefined' && !globalThis.__MTT_TEST__) boot();
