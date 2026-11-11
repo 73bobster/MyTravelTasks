@@ -1,6 +1,6 @@
 # Requirement: entry rules by destination and passport nationality
 
-Status: proposed (not in the MVP). Added 11 Nov 2026 from a real example: a British passport holder going to Spain for a conference, 17 to 21 November.
+Status: phase 1 built (UK passport, 22 destinations) on 11 Nov 2026. Rules live in `public/data/rules/gb.json`; logic in `public/js/entry.js`. Added 11 Nov 2026 from a real example: a British passport holder going to Spain for a conference, 17 to 21 November.
 
 ## Why
 
@@ -80,3 +80,13 @@ Do not scrape or guess. Rules change, so each one needs a named source and a dat
 1. Is Phase 1 (UK passport, top destinations) the right first slice?
 2. Should a manual "I've checked this myself" tick be allowed on each rule-driven task, or only on the task as a whole?
 3. Do we want a "rules checked on" badge visible to users, or only on the rule card?
+
+## Phase 1 as built
+
+- 22 destinations for UK passports: Spain, France, Italy, Portugal, Greece, Germany, Netherlands, Croatia, Malta, Cyprus, Ireland, USA, Canada, Mexico, Turkey, UAE, Egypt, Morocco, Thailand, Japan, Australia, India.
+- Every rule shows a confidence level (high, medium, low, or "needs re-checking" after 90 days), the date last checked, the date the GOV.UK page was last updated, and links to official government pages.
+- Confidence means: high = visa, stay and passport are all stated plainly on the UK government page; medium = something is missing, changing or unclear; low = a key fact is unclear.
+- Every rule card carries a "please check this yourself" note: planning aid, not legal or immigration advice.
+- Tasks: check-the-rules task, per-traveller authorisation (ESTA, eTA, e-visa) and arrival forms, border-document tasks, work-permit check for hands-on work, renew-passport when the expiry is too short.
+- Not yet: Schengen day counter, other nationalities, dual passports.
+- Items from hosts that are not on GOV.UK (for example 3 to 6 months of bank statements for Spain) are labelled as host advice.

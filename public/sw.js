@@ -1,10 +1,10 @@
 // Service worker: keeps the app shell available offline. Network first, so updates arrive as soon as you are online.
 // Bump CACHE when you change the SHELL list.
-const CACHE = 'mtt-shell-v1';
+const CACHE = 'mtt-shell-v2';
 const SHELL = [
   '/', '/index.html', '/manifest.webmanifest',
   '/css/tokens.css', '/css/app.css',
-  '/js/core.js', '/js/store.js', '/js/app.js',
+  '/js/core.js', '/js/entry.js', '/js/store.js', '/js/app.js', '/data/rules/gb.json',
   '/icons/icon.svg', '/icons/icon-192.png',
   '/assets/fonts/sora-400.woff2', '/assets/fonts/sora-600.woff2', '/assets/fonts/sora-700.woff2', '/assets/fonts/sora-800.woff2',
 ];

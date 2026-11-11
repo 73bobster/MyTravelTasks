@@ -2,6 +2,7 @@ import {
   TRIP_TYPES, TRANSPORT, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
+import { loadRules, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
   GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
 } from './store.js';
@@ -16,7 +17,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '',
+  toast: '', installEvent: null, lastKey: '', rules: null,
 };
 
 const $app = () => document.getElementById('app');
@@ -164,6 +165,54 @@ function taskRow(trip, task, today) {
   </li>`;
 }
 
+const tripEntry = (trip) => entryFor(normaliseTrip(trip), state.rules, todayISO());
+const fmtDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const linkList = (sources) => `<ul class="source-list">${sources.map((x) =>
+  `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}</a></li>`).join('')}</ul>`;
+
+function viewEntryCard(trip) {
+  const e = tripEntry(trip);
+  if (!e.applicable) return '';
+  const checkNote = `<p class="check-note"><strong>Please check this yourself.</strong> ${esc(DISCLAIMER)}</p>`;
+  if (!e.covered) {
+    return `<section class="card entry" aria-label="Entry rules">
+      <h2>Entry rules for ${esc(e.country)}</h2>
+      <p><span class="conf conf-none">Not covered yet</span></p>
+      <p class="small">We don't have reviewed rules for ${esc(e.country)} yet. Start with the UK government's travel advice for the country, and read its "Entry requirements" section.</p>
+      ${linkList([{ label: 'GOV.UK: Foreign travel advice (find your destination)', url: FCDO_INDEX }])}
+      ${checkNote}</section>`;
+  }
+  const r = e.rule, st = e.status;
+  const lines = [['Visa or entry', r.entry?.summary], ['How long you can stay', r.stay?.summary], ['Passport', r.passport?.summary]]
+    .filter(([, v]) => v).map(([k, v]) => `<div class="rule-line"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+  const auth = r.authorisation && r.authorisation.required
+    ? `<div class="rule-line"><dt>${esc(r.authorisation.name)}</dt><dd>${esc(r.authorisation.summary)} <a href="${esc(r.authorisation.applyUrl)}" target="_blank" rel="noopener noreferrer">${esc(r.authorisation.applyLabel)}</a></dd></div>` : '';
+  const biz = e.work && r.business
+    ? `<div class="rule-line"><dt>Business visit <span class="conf conf-${esc(r.business.confidence?.level || 'medium')} small-conf">${esc(CONFIDENCE[r.business.confidence?.level || 'medium'].label)}</span></dt><dd>${esc(r.business.summary)}${r.business.confidence?.why ? ` <span class="muted">${esc(r.business.confidence.why)}</span>` : ''}</dd></div>` : '';
+  const pass = e.travellers.filter((t) => t.gb && t.passport.status !== 'none').map((t) => {
+    const p = t.passport;
+    const msg = p.status === 'ok' ? `passport expiry meets the rule (needs to run to ${fmtDate(p.neededBy)} or later)`
+      : p.status === 'short' ? `passport expires too soon: it needs to run to ${fmtDate(p.neededBy)} or later`
+      : 'add a passport expiry date when editing the trip to check this';
+    return `<li class="pp-${p.status}">${esc(t.name || 'Traveller')}: ${esc(msg)}</li>`;
+  }).join('');
+  return `<section class="card entry" aria-label="Entry rules">
+    <h2>Entry rules for ${esc(r.name)} <span class="small muted">UK passport</span></h2>
+    <p class="conf-row"><span class="conf conf-${st.level}">${esc(st.label)}</span>
+      <span class="small">Checked ${esc(fmtDate(r.checked))}${r.fcdoUpdated ? ` · GOV.UK page updated ${esc(fmtDate(r.fcdoUpdated))}` : ''}</span></p>
+    <p class="small">${esc(st.means)}${r.confidence?.why ? ` ${esc(r.confidence.why)}` : ''}</p>
+    ${st.stale ? '<p class="warn small"><strong>This is more than 90 days old.</strong> Check the official pages below.</p>' : ''}
+    ${e.hasNonGB ? '<p class="warn small">Rules shown are for UK passports only. Check other travellers\' passports separately.</p>' : ''}
+    <dl class="rules">${lines}${auth}${biz}</dl>
+    ${pass ? `<ul class="pp-list">${pass}</ul>` : ''}
+    ${e.carry.length ? `<details><summary>What you may be asked for at the border (${e.carry.length})</summary><ul>${e.carry.map((c) => `<li>${esc(c.text)}</li>`).join('')}</ul>${r.hostAdvice.map((h) => `<p class="small muted">${esc(h)}</p>`).join('')}</details>` : ''}
+    ${r.other.length || r.notices.length ? `<details><summary>Other things to know (${r.other.length + r.notices.length})</summary><ul>${[...r.notices.map((n) => n.text), ...r.other].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
+    <h3 class="small-h">Official sources: check these yourself</h3>
+    ${linkList(r.sources)}
+    ${checkNote}
+  </section>`;
+}
+
 function viewTrip(id) {
   const trip = findTrip(id);
   if (!trip) return `<div class="card empty"><h2>We can't find that trip</h2><p class="muted">It may have been deleted, or it lives in a different account.</p><a class="btn btn-primary" href="#/">Back to your trips</a></div>`;
@@ -195,6 +244,8 @@ function viewTrip(id) {
           ${sum.done} of ${sum.total} done${sum.overdue ? ` · ${plural(sum.overdue, 'task')} overdue` : ''}</div>
       </div>
     </section>
+
+    ${viewEntryCard(trip)}
 
     ${blockers.length ? `
     <section class="card blockers" aria-label="Key dependencies">
@@ -283,6 +334,8 @@ const radio = (path, value, label, help, current) =>
   `<label class="choice"><input type="radio" name="${path}" data-d="${path}" value="${esc(value)}" ${String(current) === String(value) ? 'checked' : ''}><span>${esc(label)}${help ? `<span class="help">${esc(help)}</span>` : ''}</span></label>`;
 const option = (value, label, current) => `<option value="${esc(value)}" ${value === current ? 'selected' : ''}>${esc(label)}</option>`;
 
+const draftCovered = (d) => { const e = tripEntry(d); return !!e.covered; };
+
 function viewForm(editingId) {
   const d = state.draft;
   const abroad = d.scope === 'abroad';
@@ -328,9 +381,13 @@ function viewForm(editingId) {
       ${abroad ? `
       <label class="field">Country<input type="text" data-d="country" value="${esc(d.country)}" maxlength="60" list="countries" placeholder="e.g. Portugal" autocomplete="off">
         <datalist id="countries">${COUNTRIES.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
-      <label class="field">Do you need a visa or travel authorisation?
+      ${draftCovered(d) ? '<p class="notice">We have reviewed entry rules for this country for UK passports. They appear on your trip with their source links.</p>' : ''}
+      ${abroad && d.type === 'work' ? `<label class="field">What will you actually do there?
+        <span class="help">Meetings and events are normally allowed on a visit. Being paid locally or hands-on work may need a permit.</span>
+        <select data-d="options.workActivity">${option('meetings', 'Meetings, conferences or training only', o.workActivity)}${option('handson', 'Hands-on or paid work, installing or servicing', o.workActivity)}${option('unsure', 'Not sure', o.workActivity)}</select></label>` : ''}
+      ${draftCovered(d) ? '' : `<label class="field">Do you need a visa or travel authorisation?
         <span class="help">Rules differ by nationality. If you're not sure, we'll add a task to check first.</span>
-        <select data-d="options.visa">${option('unsure', "Not sure yet", o.visa)}${option('no', 'No', o.visa)}${option('yes', 'Yes', o.visa)}</select></label>` : ''}
+        <select data-d="options.visa">${option('unsure', "Not sure yet", o.visa)}${option('no', 'No', o.visa)}${option('yes', 'Yes', o.visa)}</select></label>`}` : ''}
     </fieldset>
 
     <fieldset class="card">
@@ -341,7 +398,9 @@ function viewForm(editingId) {
           <label class="field">Name<input type="text" data-t="${i}.name" value="${esc(t.name)}" maxlength="40" placeholder="Name" autocomplete="off"></label>
           <label class="field">Age group<select data-t="${i}.role">${option('adult', 'Adult', t.role)}${option('child', 'Child', t.role)}${option('infant', 'Infant (under 2)', t.role)}</select></label>
         </div>
-        ${abroad ? `<label class="field">Passport<select data-t="${i}.passport">${option('yes', 'Has a passport', t.passport)}${option('no', "Doesn't have one yet", t.passport)}${option('unsure', 'Not sure', t.passport)}</select></label>` : ''}
+        ${abroad ? `<div class="grid"><label class="field">Passport country<select data-t="${i}.nationality">${option('GB', 'United Kingdom (British)', t.nationality || 'GB')}${option('other', 'Another country', t.nationality)}</select></label>
+        <label class="field">Passport expiry date<input type="date" data-t="${i}.passportExpiry" value="${esc(t.passportExpiry || '')}"><span class="help">Optional. Lets us check the destination's validity rule.</span></label></div>
+        <label class="field">Passport<select data-t="${i}.passport">${option('yes', 'Has a passport', t.passport)}${option('no', "Doesn't have one yet", t.passport)}${option('unsure', 'Not sure', t.passport)}</select></label>` : ''}
         ${t.isMe ? '<span class="small muted">This is you</span>' : (d.travellers.length > 1 ? `<div><button type="button" class="btn btn-ghost btn-small" data-action="rm-traveller" data-i="${i}">Remove</button></div>` : '')}
       </div>`).join('')}
       <div><button type="button" class="btn btn-secondary btn-small" data-action="add-traveller">+ Add a traveller</button></div>
@@ -495,7 +554,7 @@ async function submitTrip() {
   if (errors.length) { state.formErrors = errors; render(); window.scrollTo?.(0, 0); return; }
   state.busy = true; state.formErrors = []; render();
   try {
-    const generated = generateTasks(trip, todayISO());
+    const generated = generateTasks(trip, todayISO(), tripEntry(trip));
     let saved;
     if (state.draftFor !== 'new') {
       const existing = findTrip(state.draftFor);
@@ -587,7 +646,7 @@ async function addTask(form) {
 }
 
 // ---------- events ----------
-const REDRAW_PATHS = new Set(['scope', 'who', 'options.carHire']);
+const REDRAW_PATHS = new Set(['scope', 'who', 'options.carHire', 'type']);
 
 function onClick(e) {
   const el = e.target.closest('[data-action]');
@@ -663,6 +722,7 @@ function onChange(e) {
     if (field === 'role') render();
     return;
   }
+  if (el.matches('[data-d="country"]')) { setPath(state.draft, 'country', el.value); render(); return; }
   if (el.matches('[data-d]') && el.type !== 'text' && el.type !== 'date') {
     const path = el.dataset.d;
     const value = el.type === 'checkbox' ? el.checked : el.value;
@@ -689,6 +749,7 @@ export async function boot() {
   const { user, offline } = await getSession();
   state.user = user;
   state.store = user ? new ApiStore() : new GuestStore();
+  loadRules('GB').then((r) => { state.rules = r; if (state.ready) render(); });
   await loadTrips();
   state.offline = user ? offline || state.offline : false; // guests work fully offline, so no warning for them
   state.ready = true;

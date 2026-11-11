@@ -174,3 +174,26 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--sky); borde
 @media (prefers-reduced-motion: no-preference) {
   .btn, .choice, a.trip-card { transition: background-color .15s, border-color .15s; }
 }
+
+/* ---------- entry rules card ---------- */
+.entry h2 { margin-bottom: .4rem; }
+.entry .conf-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: .2rem 0; }
+.conf { display: inline-block; border-radius: 999px; padding: .2rem .7rem; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.conf-high { background: var(--rag-green-bg); color: var(--rag-green); }
+.conf-medium, .conf-stale { background: var(--rag-amber-bg); color: var(--rag-amber); }
+.conf-low { background: var(--rag-red-bg); color: var(--rag-red); }
+.conf-none { background: var(--mist); color: var(--slate); }
+.small-conf { margin-left: .3rem; font-size: .7rem; padding: .1rem .5rem; }
+.rules { margin: .6rem 0; display: grid; gap: .6rem; }
+.rule-line dt { font-weight: 700; font-size: .85rem; }
+.rule-line dd { margin: .1rem 0 0; font-size: .92rem; }
+.pp-list { list-style: none; padding: 0; margin: .4rem 0; font-size: .9rem; }
+.pp-list li { padding: .3rem .6rem; border-radius: 8px; margin-bottom: .25rem; background: var(--mist); }
+.pp-list .pp-ok { background: var(--rag-green-bg); }
+.pp-list .pp-short { background: var(--rag-red-bg); font-weight: 700; }
+.entry details { margin: .5rem 0; font-size: .92rem; }
+.entry summary { cursor: pointer; font-weight: 700; }
+.warn { background: var(--rag-amber-bg); border-radius: 8px; padding: .5rem .7rem; }
+.small-h { font-size: .9rem; margin: .8rem 0 .2rem; }
+.source-list { margin: .2rem 0; padding-left: 1.1rem; font-size: .9rem; }
+.check-note { margin: .8rem 0 0; padding: .7rem .9rem; border-radius: 10px; background: #F3F7FF; border: 1px solid #C9DAFF; font-size: .88rem; }

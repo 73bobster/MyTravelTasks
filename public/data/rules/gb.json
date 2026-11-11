@@ -1,0 +1,1299 @@
+{
+ "schemaVersion": 1,
+ "passport": "GB",
+ "passportLabel": "British citizen passport",
+ "reviewAfterDays": 90,
+ "checkedOn": "2026-11-11",
+ "note": "Entry rules summarised from official UK government (FCDO) travel advice and, where noted, the destination government. Every rule carries a confidence level, the date it was last checked, and links to the sources. Rules change: always check the linked official pages.",
+ "groups": {
+  "schengen": {
+   "label": "Schengen area",
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa needed for tourism, visiting family or friends, business meetings, cultural or sports events, or short study or training."
+   },
+   "stay": {
+    "summary": "Up to 90 days in any 180-day period. Days spent in other Schengen countries count towards the 90.",
+    "maxDays": 90,
+    "window": 180,
+    "warning": "Overstaying can lead to a ban of up to 3 years."
+   },
+   "passport": {
+    "summary": "Issued less than 10 years before you arrive, and valid for at least 3 months after the day you plan to leave the Schengen area. Passports renewed before 1 October 2018 can fail the 10-year rule.",
+    "basis": "departure",
+    "months": 3
+   },
+   "business": {
+    "summary": "Business meetings, conferences, trade shows and classroom training are covered by the visa-free rules, within 90 days in any 180. Working is different: you must not be paid for these activities by a company in the country you are visiting, or it may count as work and need a permit.",
+    "allowed": [
+     "Business meetings or discussions",
+     "Seminars or fact-finding meetings",
+     "Conferences and workshops",
+     "Trade shows",
+     "Meeting clients or customers",
+     "Classroom-based training"
+    ],
+    "notAllowed": [
+     "Being paid for these activities by a company in the country you are visiting",
+     "Any work or services for a company or client there"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "Based on the UK government's guidance for Spain, which says it is being updated. Each Schengen country has its own work page, so check the one for your destination."
+    }
+   },
+   "carry": [
+    {
+     "id": "return",
+     "text": "A return or onward ticket",
+     "when": "if-asked"
+    },
+    {
+     "id": "funds",
+     "text": "Proof you have enough money for the stay, for example recent bank statements",
+     "when": "if-asked",
+     "task": {
+      "title": "Get proof of funds for {place} ready (recent bank statements)",
+      "offset": -7,
+      "hint": "Border officers may ask for proof of enough money for your stay. The UK government page does not set an amount or a statement period, so ask your host if they have a preference."
+     }
+    },
+    {
+     "id": "insurance",
+     "text": "Proof of travel insurance",
+     "when": "if-asked"
+    },
+    {
+     "id": "stay",
+     "text": "Proof of where you are staying: a booking confirmation, or an invitation or address if you are staying with someone",
+     "when": "if-asked"
+    },
+    {
+     "id": "invite",
+     "text": "A letter from your employer or host explaining the trip: purpose, dates and activities",
+     "when": "if-asked",
+     "business": true,
+     "task": {
+      "title": "Ask your host for a letter confirming the purpose, dates and activities of the trip",
+      "offset": -21,
+      "hint": "On business trips you may be asked for an invitation or employer letter. The UK government page does not set a format. Ask early, as it depends on someone else."
+     }
+    }
+   ],
+   "other": [
+    "Declare cash or travellers' cheques worth 10,000 euros or more when you enter. Ask for a certified declaration, or the money can be seized when you leave.",
+    "You cannot take meat, milk or products containing them into EU countries, with exceptions such as powdered baby milk and medically needed foods.",
+    "You may be asked for fingerprints and a photo at the border under the EU Entry/Exit System. It is free and the record lasts 3 years. Allow extra time."
+   ],
+   "notices": [
+    {
+     "id": "etias",
+     "text": "ETIAS: GOV.UK says the EU is expected to start it from autumn 2026, with the date to be announced. Once it runs, UK passport holders without a visa will need to apply and pay a fee. Apply only through the official EU website, because sites selling it now are fraudulent. Check the GOV.UK page for the current position before you travel."
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: EU Entry/Exit System (EES) and ETIAS",
+     "url": "https://www.gov.uk/guidance/eu-entryexit-system",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "GOV.UK: Renew or replace your adult passport",
+     "url": "https://www.gov.uk/renew-adult-passport",
+     "kind": "gov-uk"
+    }
+   ]
+  }
+ },
+ "countries": {
+  "spain": {
+   "checked": "2026-11-11",
+   "name": "Spain",
+   "aliases": [
+    "espana",
+    "españa"
+   ],
+   "group": "schengen",
+   "fcdo": "spain",
+   "fcdoUpdated": "2026-11-10",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page, which was updated this week."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Spain for work",
+     "url": "https://www.gov.uk/guidance/travel-to-spain-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "hostAdvice": [
+    "Some Spanish host companies ask for bank statements covering the last 3 to 6 months, and for medical insurance that gives the same cover as the Spanish public health system, with a medical card or policy as proof. The UK government page does not say this, so treat it as a request to confirm with your host."
+   ],
+   "business": {
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government's \"Travel to Spain for work\" page says it is being updated after a Spanish government announcement that may affect services provided for up to 90 days."
+    }
+   },
+   "sources": [
+    {
+     "label": "GOV.UK: Spain entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/spain/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "GOV.UK: Travel to Spain for work",
+     "url": "https://www.gov.uk/guidance/travel-to-spain-for-work",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "france": {
+   "checked": "2026-11-11",
+   "name": "France",
+   "group": "schengen",
+   "fcdo": "france",
+   "fcdoUpdated": "2026-10-22",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to France for work",
+     "url": "https://www.gov.uk/guidance/travel-to-france-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "carry": [
+    {
+     "id": "host",
+     "text": "If you are staying with a host: an \"attestation d'accueil\"",
+     "when": "if-asked"
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: France entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/france/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "italy": {
+   "checked": "2026-11-11",
+   "name": "Italy",
+   "group": "schengen",
+   "fcdo": "italy",
+   "fcdoUpdated": "2026-11-03",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Italy for work",
+     "url": "https://www.gov.uk/guidance/travel-to-italy-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "other": [
+    "Hotels must register your passport details with the police, so do not leave your passport for collection later.",
+    "If your passport is lost or stolen you cannot use a police report to leave Italy."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Italy entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/italy/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "portugal": {
+   "checked": "2026-11-11",
+   "name": "Portugal",
+   "group": "schengen",
+   "fcdo": "portugal",
+   "fcdoUpdated": "2026-11-10",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page, which was updated this week."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Portugal for work",
+     "url": "https://www.gov.uk/guidance/travel-to-portugal-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "other": [
+    "Children travelling without a parent or guardian need a notarised letter of authorisation.",
+    "The EU \"Travel to Europe\" app is optional but can speed up border checks."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Portugal entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/portugal/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "greece": {
+   "checked": "2026-11-11",
+   "name": "Greece",
+   "group": "schengen",
+   "fcdo": "greece",
+   "fcdoUpdated": "2026-11-03",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Greece for work",
+     "url": "https://www.gov.uk/guidance/travel-to-greece-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "notices": [
+    {
+     "id": "greek-ees",
+     "text": "GOV.UK says Greek authorities will not collect fingerprints and photos from UK travellers under EES. Allow extra time for checks on entry and departure anyway."
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Greece entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/greece/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "germany": {
+   "checked": "2026-11-11",
+   "name": "Germany",
+   "group": "schengen",
+   "fcdo": "germany",
+   "fcdoUpdated": "2026-08-11",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Germany, providing services and travelling for business",
+     "url": "https://www.gov.uk/guidance/germany-providing-services-after-eu-exit",
+     "kind": "gov-uk"
+    }
+   ],
+   "notices": [
+    {
+     "id": "de-borders",
+     "text": "Temporary border controls are in place at Germany's land borders. Carry your passport if you cross by road or rail."
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Germany entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/germany/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "netherlands": {
+   "checked": "2026-11-11",
+   "name": "Netherlands",
+   "aliases": [
+    "holland",
+    "the netherlands"
+   ],
+   "group": "schengen",
+   "fcdo": "netherlands",
+   "fcdoUpdated": "2026-08-11",
+   "confidence": {
+    "level": "medium",
+    "why": "The UK government page lists temporary extra border checks with end dates that appear to have passed, and gives no specific list of documents for the border. Check the Dutch government pages too."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to the Netherlands for work",
+     "url": "https://www.gov.uk/guidance/travel-to-the-netherlands-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: the Netherlands entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/netherlands/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "croatia": {
+   "checked": "2026-11-11",
+   "name": "Croatia",
+   "group": "schengen",
+   "fcdo": "croatia",
+   "fcdoUpdated": "2026-08-11",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Croatia for work",
+     "url": "https://www.gov.uk/guidance/travel-to-croatia-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "other": [
+    "Your accommodation must register your arrival with the police within 48 hours. Hotels do this for you, but check if you are staying somewhere private."
+   ],
+   "notices": [
+    {
+     "id": "hr-borders",
+     "text": "There are checks at Slovenia's borders with Croatia, so carry your passport."
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Croatia entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/croatia/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "malta": {
+   "checked": "2026-11-11",
+   "name": "Malta",
+   "group": "schengen",
+   "fcdo": "malta",
+   "fcdoUpdated": "2026-08-11",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Malta for work",
+     "url": "https://www.gov.uk/guidance/travel-to-malta-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "other": [
+    "A yellow fever certificate is needed if you are coming from a country listed as a transmission risk."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Malta entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/malta/entry-requirements",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "cyprus": {
+   "checked": "2026-11-11",
+   "name": "Cyprus",
+   "fcdo": "cyprus",
+   "fcdoUpdated": "2026-08-14",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa needed for tourism, visiting family or friends, business meetings, or short study or training."
+   },
+   "stay": {
+    "summary": "Up to 90 days in any 180-day period. Time spent in the north of Cyprus counts towards the 90.",
+    "maxDays": 90,
+    "window": 180,
+    "warning": "Overstaying can mean being put on a stop list and refused entry for up to 5 years."
+   },
+   "passport": {
+    "summary": "Issued less than 10 years before you arrive, valid for at least 3 months after the day you plan to leave, with at least one blank page for stamping.",
+    "basis": "departure",
+    "months": 3
+   },
+   "business": {
+    "summary": "Business meetings are covered by the visa-free rules. GOV.UK says the requirements for working in Cyprus are different.",
+    "allowed": [
+     "Business meetings"
+    ],
+    "notAllowed": [
+     "Working in Cyprus, which has different requirements"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government's separate \"Travel to Cyprus for work\" page was not reviewed here."
+    }
+   },
+   "businessSources": [
+    {
+     "label": "GOV.UK: Travel to Cyprus for work",
+     "url": "https://www.gov.uk/guidance/travel-to-cyprus-for-work",
+     "kind": "gov-uk"
+    }
+   ],
+   "carry": [
+    {
+     "id": "return",
+     "text": "A return or onward ticket",
+     "when": "if-asked"
+    },
+    {
+     "id": "funds",
+     "text": "Proof you have enough money for the stay",
+     "when": "if-asked"
+    },
+    {
+     "id": "stamp",
+     "text": "Boarding passes or tickets as evidence of entry or exit if your passport is not stamped",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "You do not need to register for EES when entering Cyprus, because it is not in the Schengen area.",
+    "Make sure your passport is stamped on entry and exit.",
+    "If you enter the Republic through the north, for example via Ercan Airport, the authorities will consider that you entered illegally, which can mean a fine or refusal of entry or exit.",
+    "Only pedestrians can use the crossing points at Ledra Palace and Ledra and Lokmaci Street."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Cyprus entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/cyprus/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "ireland": {
+   "checked": "2026-11-11",
+   "name": "Ireland",
+   "fcdo": "ireland",
+   "fcdoUpdated": "2026-09-04",
+   "confidence": {
+    "level": "high",
+    "why": "The UK government page clearly sets out the Common Travel Area rules for British citizens."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa, residency permit or pre-travel authorisation needed. British and Irish citizens can travel freely under the Common Travel Area."
+   },
+   "stay": {
+    "summary": "British nationals can visit and remain indefinitely under the Common Travel Area rules."
+   },
+   "passport": {
+    "summary": "A passport is not legally required but is the easiest proof of identity. Some airlines and ferry operators require a passport, so check your carrier.",
+    "basis": null
+   },
+   "business": {
+    "summary": "GOV.UK says British nationals do not need a visa or residency permit to work in Ireland.",
+    "allowed": [],
+    "notAllowed": [],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page gives little detail on business visits."
+    }
+   },
+   "carry": [
+    {
+     "id": "nationality",
+     "text": "Proof of British nationality, which Irish immigration officers may ask for",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "EES does not apply when you enter Ireland, because it is not in the Schengen area.",
+    "Declare goods that may be prohibited or subject to tax or duty. Declare cash or travellers' cheques worth 10,000 euros or more."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Ireland entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/ireland/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "usa": {
+   "checked": "2026-11-11",
+   "name": "United States",
+   "aliases": [
+    "usa",
+    "us",
+    "u.s.a.",
+    "united states of america",
+    "america",
+    "the united states"
+   ],
+   "fcdo": "usa",
+   "fcdoUpdated": "2026-10-30",
+   "confidence": {
+    "level": "medium",
+    "why": "The UK government page says you need an ESTA or a visa, but does not state the maximum stay, the ESTA cost or how far ahead to apply. Use the official ESTA website for those."
+   },
+   "entry": {
+    "status": "authorisation",
+    "summary": "You need an approved ESTA or a visa before you travel."
+   },
+   "stay": {
+    "summary": "The UK government page does not state the maximum stay. The border officer decides how long you may stay, so keep to the period you are given."
+   },
+   "passport": {
+    "summary": "Valid for the length of your planned stay. Countries you transit through may need 6 months' validity, so check those too.",
+    "basis": "stay"
+   },
+   "authorisation": {
+    "required": true,
+    "name": "ESTA",
+    "taskOffset": -30,
+    "summary": "Apply online through the official ESTA website or app only. You may not qualify if you have been arrested, have a criminal record, were refused entry or deported, or overstayed before. If your ESTA does not have the required selfie photograph you may need a new one.",
+    "applyLabel": "Official ESTA website",
+    "applyUrl": "https://esta.cbp.dhs.gov/"
+   },
+   "business": {
+    "summary": "An ESTA may not be enough for all business travel, especially if you are travelling on behalf of a US company. Check the ESTA rules for your trip. If you are not eligible for an ESTA you need a visa from the US Embassy in London.",
+    "allowed": [],
+    "notAllowed": [
+     "Travelling on behalf of a US company may need a visa rather than an ESTA"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page does not list which business activities an ESTA allows. The official ESTA site is the place to check."
+    }
+   },
+   "carry": [
+    {
+     "id": "purpose",
+     "text": "Evidence of the purpose, location and length of your visit",
+     "when": "if-asked"
+    },
+    {
+     "id": "consent",
+     "text": "For children 17 and under in some circumstances: a letter of consent, preferably in English and notarised",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "Border officers may ask to inspect your phone, emails, texts and social media. Refusing can lead to delay or refusal of entry.",
+    "Declare anything that may be prohibited or subject to tax or duty.",
+    "US and British dual nationals must enter and leave the US on a US passport."
+   ],
+   "notices": [
+    {
+     "id": "us-form",
+     "text": "GOV.UK says that from 3 November 2026 you must complete and sign a form before boarding flights to or through the US, which asks whether you were in the Democratic Republic of the Congo in the 21 days before your flight. Check the GOV.UK page for the current position."
+    }
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: the USA entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/usa/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "Official ESTA website (US Customs and Border Protection)",
+     "url": "https://esta.cbp.dhs.gov/",
+     "kind": "destination"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "canada": {
+   "checked": "2026-11-11",
+   "name": "Canada",
+   "fcdo": "canada",
+   "fcdoUpdated": "2026-06-02",
+   "confidence": {
+    "level": "medium",
+    "why": "The UK government page says you do not need a visa for short visits but \"may need an eTA\", and does not explain how to apply. Use the Canadian government check tool to confirm."
+   },
+   "entry": {
+    "status": "authorisation",
+    "summary": "No visa for short visits, but you may need an eTA. An eTA is not needed if you arrive by land or sea, and air transit needs an eTA or a transit visa."
+   },
+   "stay": {
+    "summary": "Normally up to 6 months."
+   },
+   "passport": {
+    "summary": "Valid for the length of your planned stay. Countries you transit through may need 6 months' validity, so check those too.",
+    "basis": "stay"
+   },
+   "authorisation": {
+    "required": "check",
+    "name": "eTA",
+    "taskOffset": -30,
+    "summary": "Use the Government of Canada check tool to confirm whether you need an eTA, and apply only through the official site. If 72 hours pass after applying with no confirmation, you can use the official enquiry form.",
+    "applyLabel": "Government of Canada: visa or eTA check",
+    "applyUrl": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/check-visa-eta.html"
+   },
+   "business": {
+    "summary": "The UK government page does not cover business visits. Check the Government of Canada site for the rules on visiting for work.",
+    "allowed": [],
+    "notAllowed": [],
+    "confidence": {
+     "level": "medium",
+     "why": "Not stated on the UK government page."
+    }
+   },
+   "carry": [
+    {
+     "id": "return",
+     "text": "A return or onward ticket",
+     "when": "if-asked"
+    },
+    {
+     "id": "funds",
+     "text": "Proof you have enough money for your stay, even if you are staying with family or friends",
+     "when": "if-asked"
+    },
+    {
+     "id": "consent",
+     "text": "For children travelling alone or with one parent: a letter of consent from the parent or guardian who is not travelling",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "If you have a criminal record or have been arrested, GOV.UK advises contacting the Canadian High Commission in the UK before you travel.",
+    "Declare anything that may be prohibited or subject to tax or duty, and any recent farm visits or contact with wild animals."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Canada entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/canada/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "Canada: check if you need a visa or eTA (Government of Canada)",
+     "url": "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/check-visa-eta.html",
+     "kind": "destination"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "mexico": {
+   "checked": "2026-11-11",
+   "name": "Mexico",
+   "fcdo": "mexico",
+   "fcdoUpdated": "2026-10-20",
+   "confidence": {
+    "level": "medium",
+    "why": "The UK government page gives the key rules but several forms and fees are mentioned without amounts or deadlines."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa needed for tourists. You get a stamp showing your permitted stay."
+   },
+   "stay": {
+    "summary": "Up to 180 days as a tourist. Your stamp shows the days you were actually given."
+   },
+   "passport": {
+    "summary": "Valid for the length of your stay. The Mexican Embassy recommends at least 180 days' validity.",
+    "basis": "stay"
+   },
+   "business": {
+    "summary": "Tourists cannot do any voluntary or paid work or activity. Work or volunteering needs the right visa from the Mexican Embassy before you travel.",
+    "allowed": [],
+    "notAllowed": [
+     "Paid or voluntary work of any kind on a tourist stay"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page does not describe business meetings specifically."
+    }
+   },
+   "carry": [
+    {
+     "id": "return",
+     "text": "A return or onward ticket",
+     "when": "if-asked"
+    },
+    {
+     "id": "stay",
+     "text": "Proof of accommodation such as a hotel booking, or a letter of invitation if you are staying in someone's home",
+     "when": "if-asked"
+    },
+    {
+     "id": "funds",
+     "text": "Proof you have enough money for the stay",
+     "when": "if-asked"
+    },
+    {
+     "id": "children",
+     "text": "For children: evidence of your relationship and the reason for travel, such as a birth certificate",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "British nationals entering by land must complete an online immigration form first.",
+    "If you have goods to declare you must submit a customs form online before you travel.",
+    "Quintana Roo (Cancun and the Riviera Maya) has an entry tax that can be paid online before or during your stay.",
+    "Departure tax may apply, and some locations accept only cash.",
+    "Transit through the USA needs an ESTA or the correct visa."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Mexico entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/mexico/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "turkey": {
+   "checked": "2026-11-11",
+   "name": "Turkey",
+   "aliases": [
+    "turkiye",
+    "türkiye"
+   ],
+   "fcdo": "turkey",
+   "fcdoUpdated": "2026-10-27",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa needed for tourism or business visits."
+   },
+   "stay": {
+    "summary": "Up to 90 days in any 180-day period.",
+    "maxDays": 90,
+    "window": 180
+   },
+   "passport": {
+    "summary": "Valid for at least 150 days after the date you arrive, with at least one blank page. Residents in Turkey need 6 months from arrival.",
+    "basis": "arrival",
+    "days": 150
+   },
+   "business": {
+    "summary": "Business visits fall under the visa-free allowance. If you plan to work in Turkey, make sure you have the correct permits.",
+    "allowed": [
+     "Business visits within the visa-free allowance"
+    ],
+    "notAllowed": [
+     "Working without the correct permits"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page is brief on what a business visit covers."
+    }
+   },
+   "carry": [],
+   "other": [
+    "Lira worth more than 5,000 US dollars cannot be taken out of Turkey.",
+    "Make sure the border officer stamps your passport if you cross by land."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Turkey entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/turkey/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "united-arab-emirates": {
+   "checked": "2026-11-11",
+   "name": "United Arab Emirates",
+   "aliases": [
+    "uae",
+    "emirates",
+    "dubai",
+    "abu dhabi"
+   ],
+   "fcdo": "united-arab-emirates",
+   "fcdoUpdated": "2026-10-27",
+   "confidence": {
+    "level": "high",
+    "why": "Entry, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "entry": {
+    "status": "visa-on-arrival",
+    "summary": "A visitor visa is issued free of charge when you arrive. No advance application is needed."
+   },
+   "stay": {
+    "summary": "Up to 90 days in any 180-day period, counted from first entry. Overstaying brings daily fines.",
+    "maxDays": 90,
+    "window": 180
+   },
+   "passport": {
+    "summary": "Valid for at least 6 months after the day you arrive. A lost or stolen passport means entry is refused.",
+    "basis": "arrival",
+    "months": 6
+   },
+   "business": {
+    "summary": "The UK government page does not set out business-visit rules. If you entered on a visit visa and want to work, you must get a probationary work permit. Working on a visit visa can lead to a fine, imprisonment or deportation.",
+    "allowed": [],
+    "notAllowed": [
+     "Working on a visit visa"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "Business visits are not covered on the UK government page."
+    }
+   },
+   "carry": [
+    {
+     "id": "medicine",
+     "text": "Ministry of Health approval for narcotic, psychotropic or controlled medicines, if you take any",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "Medicines that are narcotic, psychotropic, controlled or semi-controlled need Ministry of Health approval, normally processed within 5 working days. You can bring up to 3 months' supply, or 1 month for medicines on the approval list.",
+    "A yellow fever certificate is needed if you are coming from a country listed as a transmission risk.",
+    "Pork products and pornography are illegal to bring in. Weapons and ammunition need permission.",
+    "Unresolved debts or legal issues from a previous stay can lead to arrest, and travel bans can stop you leaving."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: the United Arab Emirates entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/united-arab-emirates/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "egypt": {
+   "checked": "2026-11-11",
+   "name": "Egypt",
+   "fcdo": "egypt",
+   "fcdoUpdated": "2026-10-27",
+   "confidence": {
+    "level": "medium",
+    "why": "Visa rules are stated, but there are several routes and the fees have changed at short notice (including from 1 August 2026). Check the official portal for the current price."
+   },
+   "entry": {
+    "status": "visa",
+    "summary": "British passport holders normally need a visa. You can get an e-visa online in advance, or buy one on arrival. Air arrivals to Sharm El-Sheikh staying under 15 days at listed resorts do not need one."
+   },
+   "stay": {
+    "summary": "A visa on arrival is valid for up to 30 days. Tourist e-visas are valid for up to 3 months. Extensions are available at Passport and Immigration Offices."
+   },
+   "passport": {
+    "summary": "Valid for at least 6 months after the day you arrive, with at least one blank page.",
+    "basis": "arrival",
+    "months": 6
+   },
+   "authorisation": {
+    "required": true,
+    "name": "Egypt visa (e-visa or visa on arrival)",
+    "taskOffset": -21,
+    "summary": "You can apply for an e-visa in advance, which can help prevent delays, or buy a visa on arrival. GOV.UK says airport kiosks charge 30 US dollars in cash, and from 1 August 2026 a digital visa on arrival at Cairo International Airport costs 36 US dollars by card only.",
+    "applyLabel": "Egypt e-visa portal",
+    "applyUrl": "https://visa2egypt.gov.eg/eVisa/Home"
+   },
+   "business": {
+    "summary": "Business visits are not covered on the UK government page. Check the Egyptian e-visa portal for the right visa type.",
+    "allowed": [],
+    "notAllowed": [],
+    "confidence": {
+     "level": "medium",
+     "why": "Not stated on the UK government page."
+    }
+   },
+   "carry": [],
+   "other": [
+    "If you cross at Taba, carry cash: GOV.UK suggests at least 170 US dollars per person, and says border charges have changed at short notice.",
+    "Visa overstays of more than 14 days can bring a fine.",
+    "You can bring in or take out up to 5,000 Egyptian pounds. Declare foreign currency worth more than 10,000 US dollars.",
+    "Satellite phones and radio equipment are likely to be confiscated without prior clearance.",
+    "A yellow fever certificate is needed if you are coming from a country listed as a transmission risk."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Egypt entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/egypt/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "Egypt e-visa portal (Government of Egypt)",
+     "url": "https://visa2egypt.gov.eg/eVisa/Home",
+     "kind": "destination"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "morocco": {
+   "checked": "2026-11-11",
+   "name": "Morocco",
+   "fcdo": "morocco",
+   "fcdoUpdated": "2026-08-19",
+   "confidence": {
+    "level": "high",
+    "why": "Visa, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "No visa needed for tourism."
+   },
+   "stay": {
+    "summary": "Up to 90 days for tourism. To stay longer you must ask for an extension at a Moroccan police station.",
+    "maxDays": 90
+   },
+   "passport": {
+    "summary": "Valid for at least 3 months after the day you arrive. Morocco has refused entry to some travellers with damaged passports.",
+    "basis": "arrival",
+    "months": 3
+   },
+   "business": {
+    "summary": "For travel other than tourism, GOV.UK says to check visa requirements with the Moroccan Consulate General in the UK.",
+    "allowed": [],
+    "notAllowed": [],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page gives no business-visit rules."
+    }
+   },
+   "carry": [
+    {
+     "id": "stamp",
+     "text": "An entry stamp in your passport, or other evidence of entry, so you can leave without problems",
+     "when": "always"
+    }
+   ],
+   "other": [
+    "A polio vaccination certificate is needed if you are coming from a polio-affected country.",
+    "Sending passports through the post to or through Morocco is illegal and they will be confiscated.",
+    "Declare foreign currency of 100,000 dirham or more. The dirham cannot easily be exchanged outside Morocco."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Morocco entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/morocco/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "thailand": {
+   "checked": "2026-11-11",
+   "name": "Thailand",
+   "fcdo": "thailand",
+   "fcdoUpdated": "2026-10-12",
+   "confidence": {
+    "level": "medium",
+    "why": "The permitted stay for visa-free visitors changed recently (30 days from 15 September 2026), and a digital arrival card is now required. Check both on the official pages."
+   },
+   "entry": {
+    "status": "visa-free",
+    "summary": "Visa-exempt entry for tourism only. It does not cover business travel."
+   },
+   "stay": {
+    "summary": "Up to 30 days for tourism, from 15 September 2026. If you entered before that date you will usually be allowed the period granted on arrival.",
+    "maxDays": 30
+   },
+   "passport": {
+    "summary": "Valid for at least 6 months after the day you arrive, with at least one blank page.",
+    "basis": "arrival",
+    "months": 6
+   },
+   "forms": [
+    {
+     "id": "tdac",
+     "title": "Complete the Thailand Digital Arrival Card online (within 3 days before you arrive)",
+     "offset": -3,
+     "hint": "GOV.UK says all foreign nationals must complete this before arrival, by air, land or sea. You can register within 3 days before you arrive.",
+     "url": "https://tdac.immigration.go.th/manual/en/index.html"
+    }
+   ],
+   "business": {
+    "summary": "Visa-exempt entry does not cover business travel, including conferences and meetings. Get the appropriate visa before you travel.",
+    "allowed": [],
+    "notAllowed": [
+     "Conferences and meetings on a visa-exempt entry"
+    ],
+    "visaNeeded": true,
+    "confidence": {
+     "level": "medium",
+     "why": "GOV.UK states this clearly, but it does not say which visa to apply for. Check with the Thai embassy."
+    }
+   },
+   "carry": [
+    {
+     "id": "funds",
+     "text": "Proof of funds of at least 10,000 Thai baht per person, or 20,000 baht per family",
+     "when": "if-asked"
+    },
+    {
+     "id": "return",
+     "text": "Evidence of onward or return travel",
+     "when": "if-asked"
+    },
+    {
+     "id": "stay",
+     "text": "Evidence of accommodation, which frequent visitors in particular may be asked for. British nationals have been refused entry for lacking it",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "Visa-exempt tourist entry by land is normally limited to 2 per calendar year. This generally does not apply to air arrivals.",
+    "Overstaying brings a fine of 500 baht a day (up to 20,000 baht), possible detention, deportation at your own expense and a re-entry ban of up to 10 years.",
+    "Taking more than 200 cigarettes in is illegal.",
+    "A yellow fever certificate is needed if you are coming from a country listed as a transmission risk."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Thailand entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/thailand/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "Thailand Digital Arrival Card (Thai Immigration Bureau)",
+     "url": "https://tdac.immigration.go.th/manual/en/index.html",
+     "kind": "destination"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "japan": {
+   "checked": "2026-11-11",
+   "name": "Japan",
+   "fcdo": "japan",
+   "fcdoUpdated": "2026-08-28",
+   "confidence": {
+    "level": "high",
+    "why": "Entry, stay and passport rules are all stated plainly on the UK government page."
+   },
+   "entry": {
+    "status": "visa-on-arrival",
+    "summary": "You can get a visa on arrival for tourism or business, for up to 90 days. You do not need to apply before you travel."
+   },
+   "stay": {
+    "summary": "Up to 90 days. You can apply at an immigration office for an extension of another 90 days.",
+    "maxDays": 90
+   },
+   "passport": {
+    "summary": "Valid for the length of your stay, with a blank page for the visa stamp.",
+    "basis": "stay"
+   },
+   "business": {
+    "summary": "Business visits fall under the 90-day visa on arrival. It is illegal to work in Japan without the correct visa, however informal or temporary the work.",
+    "allowed": [
+     "Business visits within 90 days"
+    ],
+    "notAllowed": [
+     "Any work without the correct visa"
+    ],
+    "confidence": {
+     "level": "medium",
+     "why": "The UK government page does not list which business activities are allowed."
+    }
+   },
+   "carry": [],
+   "other": [
+    "Meat products, including sausages, bacon and ham, are illegal to bring in without permission from the Japanese Animal Quarantine Service.",
+    "Japan is mainly cash-based and some foreign cards may not work.",
+    "Declare anything that may be prohibited or subject to tax or duty."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Japan entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/japan/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "australia": {
+   "checked": "2026-11-11",
+   "name": "Australia",
+   "fcdo": "australia",
+   "fcdoUpdated": "2026-03-19",
+   "confidence": {
+    "level": "medium",
+    "why": "The UK government page says you must have a visa, usually an eVisitor or an ETA, but does not state the maximum stay, how far ahead to apply or the rules for business visits."
+   },
+   "entry": {
+    "status": "authorisation",
+    "summary": "You must have a visa before you travel. British citizens can usually get an eVisitor visa or an Electronic Travel Authority (ETA)."
+   },
+   "stay": {
+    "summary": "The UK government page does not state the maximum stay. It is set by the visa you are granted."
+   },
+   "passport": {
+    "summary": "Valid for the length of your planned stay. Countries you transit through may need 6 months' validity, so check those too.",
+    "basis": "stay"
+   },
+   "authorisation": {
+    "required": true,
+    "name": "eVisitor visa or ETA",
+    "taskOffset": -30,
+    "summary": "The eVisitor visa has no application charge or service fee. The ETA is applied for through the iOS or Android app, with no visa charge but possibly a service fee. The GOV.UK page links to the official application routes.",
+    "applyLabel": "GOV.UK: Australia entry requirements (links to apply)",
+    "applyUrl": "https://www.gov.uk/foreign-travel-advice/australia/entry-requirements"
+   },
+   "business": {
+    "summary": "Business visits are not covered on the UK government page. Check the Australian Department of Home Affairs for the right visa.",
+    "allowed": [],
+    "notAllowed": [],
+    "confidence": {
+     "level": "medium",
+     "why": "Not stated on the UK government page."
+    }
+   },
+   "carry": [],
+   "other": [
+    "You must fill in an Incoming Passenger Card and declare risk goods such as food and animal products. Australia has strict biosecurity rules and breaches can bring heavy fines.",
+    "British and Australian dual nationals must enter and leave Australia on their Australian passport.",
+    "A yellow fever certificate is needed if you are coming from a country listed as a transmission risk."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: Australia entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/australia/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  },
+  "india": {
+   "checked": "2026-11-11",
+   "name": "India",
+   "fcdo": "india",
+   "fcdoUpdated": "2026-10-07",
+   "confidence": {
+    "level": "medium",
+    "why": "A visa is clearly required, but the UK government page does not state the maximum stay or e-visa cost, and mentions several forms with different deadlines."
+   },
+   "entry": {
+    "status": "visa",
+    "summary": "You must have a visa, unless you hold an Overseas Citizen of India (OCI) card. You can apply for an e-visa through the Indian government's official site."
+   },
+   "stay": {
+    "summary": "The UK government page does not state the maximum stay. It depends on your visa. If you stay more than 180 days without an OCI card you must register within 14 days of arrival."
+   },
+   "passport": {
+    "summary": "Valid for at least 6 months after the day you arrive, with at least 2 blank pages.",
+    "basis": "arrival",
+    "months": 6
+   },
+   "authorisation": {
+    "required": true,
+    "name": "India e-visa",
+    "taskOffset": -45,
+    "summary": "Apply through the official site and check the airports, land borders and ports where the e-visa is accepted. Allow plenty of time for processing.",
+    "applyLabel": "Indian e-visa (Government of India)",
+    "applyUrl": "https://indianvisaonline.gov.in/evisa/"
+   },
+   "forms": [
+    {
+     "id": "e-arrival",
+     "title": "Complete the India e-arrival card (up to 72 hours before you arrive)",
+     "offset": -3,
+     "hint": "GOV.UK lists an e-arrival card among the documents you may need, which can be completed up to 72 hours before arrival.",
+     "url": null
+    },
+    {
+     "id": "self-declaration",
+     "title": "Complete the India Self-Declaration Form (up to 24 hours before you arrive)",
+     "offset": -1,
+     "hint": "GOV.UK says the Self-Declaration Form should be completed up to 24 hours before arrival.",
+     "url": null
+    }
+   ],
+   "business": {
+    "summary": "India has separate business and work visa categories. Make sure you get the right one: the wrong visa can lead to refusal, deportation or a future entry ban.",
+    "allowed": [],
+    "notAllowed": [
+     "Business or work on a tourist visa"
+    ],
+    "visaNeeded": true,
+    "confidence": {
+     "level": "medium",
+     "why": "GOV.UK does not describe the business visa. Check the Indian government's visa site."
+    }
+   },
+   "carry": [
+    {
+     "id": "stamp",
+     "text": "An entry stamp in your passport. Without one you need a special exit permit, which can take 5 to 15 working days",
+     "when": "always"
+    },
+    {
+     "id": "health",
+     "text": "A yellow fever or polio certificate, if you are coming from an affected country",
+     "when": "if-asked"
+    }
+   ],
+   "other": [
+    "Restricted or protected areas need permits. Apply 3 months before you arrive.",
+    "Declare cash above 5,000 US dollars in notes, or 10,000 US dollars in notes and travellers' cheques combined."
+   ],
+   "sources": [
+    {
+     "label": "GOV.UK: India entry requirements",
+     "url": "https://www.gov.uk/foreign-travel-advice/india/entry-requirements",
+     "kind": "gov-uk"
+    },
+    {
+     "label": "Indian e-visa (Government of India)",
+     "url": "https://indianvisaonline.gov.in/evisa/",
+     "kind": "destination"
+    },
+    {
+     "label": "TravelHealthPro (NHS-funded health advice for travellers)",
+     "url": "https://travelhealthpro.org.uk/",
+     "kind": "gov-uk"
+    }
+   ]
+  }
+ }
+}

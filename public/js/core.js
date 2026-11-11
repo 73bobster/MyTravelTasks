@@ -77,6 +77,8 @@ export function normaliseTrip(input = {}) {
       name: str(t?.name, 40),
       role: pick(t?.role, ROLES, 'adult'),
       passport: pick(t?.passport, PASSPORT, 'unsure'),
+      nationality: pick(t?.nationality, ['GB', 'other'], 'GB'),
+      passportExpiry: isISODate(t?.passportExpiry) ? t.passportExpiry : '',
       isMe: !!t?.isMe,
     }));
   return {
@@ -98,6 +100,7 @@ export function normaliseTrip(input = {}) {
       handLuggageOnly: !!o.handLuggageOnly,
       childConsent: !!o.childConsent,
       pets: pick(o.pets, PETS, 'none'),
+      workActivity: pick(o.workActivity, ['meetings', 'handson', 'unsure'], 'unsure'),
     },
   };
 }
@@ -140,7 +143,7 @@ export function normaliseTask(t = {}, i = 0) {
 }
 
 // ---------- task generation ----------
-export function generateTasks(tripInput, today = todayISO()) {
+export function generateTasks(tripInput, today = todayISO(), entry = null) {
   const trip = normaliseTrip(tripInput);
   const { startDate: start, endDate: end } = trip;
   const nights = daysBetween(start, end);
@@ -156,6 +159,7 @@ export function generateTasks(tripInput, today = todayISO()) {
   const hub = flying ? 'airport' : modes.includes('ferry') ? 'port' : 'station';
   const out = [];
   let n = 0;
+  const rule = abroad && entry && entry.covered ? entry.rule : null;
 
   const dueDate = (anchor, offset) => {
     const d = addDays(anchor === 'end' ? end : start, offset);
@@ -189,7 +193,13 @@ export function generateTasks(tripInput, today = todayISO()) {
     for (const t of trip.travellers) {
       const s = slug(t.name);
       const owner = ownerFor(t);
-      if (t.passport === 'no') {
+      const pc = rule ? entry.travellers.find((x) => x.name === t.name)?.passport : null;
+      if (pc && pc.status === 'short' && t.passport !== 'no') {
+        add(`passport@${s}`, `Renew ${t.name}'s passport: it expires before the ${shortDate(pc.neededBy)} ${place} needs`, 'Documents', -75, {
+          owner, isKey: true,
+          hint: `${rule.passport.summary} Renew through GOV.UK (https://www.gov.uk/renew-adult-passport) and allow several weeks.`,
+        });
+      } else if (t.passport === 'no') {
         add(`passport@${s}`, `Apply for ${t.name}'s passport`, 'Documents', -75, {
           owner, isKey: true,
           hint: 'Allow several weeks. Check current processing times on GOV.UK before you book.',
@@ -206,13 +216,60 @@ export function generateTasks(tripInput, today = todayISO()) {
         });
       }
     }
+    if (rule) {
+      const links = rule.sources.slice(0, 3).map((x) => x.url).join('  ');
+      add('entry_rules', `Check the official entry rules for ${place} yourself`, 'Documents', -90, {
+        isKey: true,
+        hint: `We summarise the rules, but you should read the official pages and confirm. ${links}`,
+      });
+      for (const t of trip.travellers) {
+        const s = slug(t.name);
+        const owner = ownerFor(t);
+        if ((t.nationality || 'GB') !== 'GB') {
+          add(`entry_other@${s}`, `Check what ${t.name} needs to enter ${place} (we only cover UK passports so far)`, 'Documents', -90, {
+            owner, isKey: true, hint: 'Use the destination government\'s official immigration pages and your airline.',
+          });
+          continue;
+        }
+        const a = rule.authorisation;
+        if (a && a.required) {
+          const need = a.required === true;
+          add(`visa@${s}`, need ? `Apply for ${t.name}'s ${a.name}` : `Check if ${t.name} needs an ${a.name}, and apply if so`, 'Documents', a.taskOffset || -45, {
+            owner, isKey: true, dependsOn: [`passport@${s}`, 'entry_rules'],
+            hint: `${a.summary} ${a.applyUrl}`,
+          });
+        }
+        for (const f of rule.forms || []) {
+          add(`form_${f.id}@${s}`, `${f.title}${trip.travellers.length > 1 ? ` for ${t.name}` : ''}`, 'Documents', f.offset, {
+            owner, isKey: true, hint: [f.hint, f.url].filter(Boolean).join(' '),
+          });
+        }
+      }
+      const gbFirst = trip.travellers.find((t) => (t.nationality || 'GB') === 'GB');
+      if (gbFirst) {
+        for (const c of entry.carry) {
+          if (!c.task) continue;
+          add(`carry_${c.id}`, c.task.title.replace('{place}', place), 'Documents', c.task.offset, {
+            owner: org, isKey: !!c.task.isKey, dependsOn: c.task.dependsOn || [],
+            hint: `${c.task.hint || ''} Often asked for at the border.`.trim(),
+          });
+        }
+        if (work && (o.workActivity !== 'meetings' || (rule.business && rule.business.visaNeeded))) {
+          add('work_permit', `Check whether your activities in ${place} count as work needing a permit or visa`, 'Documents', -45, {
+            isKey: true,
+            hint: `${rule.business?.summary || ''} Business meetings are generally allowed; being paid locally, installing or servicing equipment, or hands-on work may not be.`.trim(),
+          });
+        }
+      }
+    } else {
     add('entry_rules', `Check entry rules for ${place} (visa or travel authorisation, health, customs)`, 'Documents', -90, {
       isKey: o.visa !== 'no',
       hint: o.visa === 'unsure'
         ? 'You are not sure if you need a visa, so check this first. Start with https://www.gov.uk/foreign-travel-advice'
         : 'Official source: https://www.gov.uk/foreign-travel-advice',
     });
-    if (o.visa === 'yes') {
+    }
+    if (!rule && o.visa === 'yes') {
       for (const t of trip.travellers) {
         const s = slug(t.name);
         add(`visa@${s}`, `Apply for ${t.name}'s visa or travel authorisation`, 'Documents', -45, {
