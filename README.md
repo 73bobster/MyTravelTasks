@@ -62,7 +62,7 @@ public/            static site and PWA (index.html, js/, css/, icons/, sw.js, ma
   js/app.js        the UI
 functions/api/     Cloudflare Pages Function: the whole JSON API
 server/            auth, HTTP helpers, SQL
-migrations/        SQL, applied in order
+migrations/        SQL, applied in order (003 adds regular tasks)
 test/              node:test (logic, server helpers, UI via jsdom)
 ```
 
@@ -70,7 +70,7 @@ test/              node:test (logic, server helpers, UI via jsdom)
 
 ### 1. Database (done)
 
-A Neon project named `mytraveltasks` (eu-west-2) already exists with migrations `001` and `002` applied. For a fresh database, run the files in `migrations/` in order.
+A Neon project named `mytraveltasks` (eu-west-2) already exists with migrations `001` to `003` applied. For a fresh database, run the files in `migrations/` in order.
 
 ### 2. Cloudflare Pages
 

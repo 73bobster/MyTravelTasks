@@ -106,6 +106,22 @@ export function normaliseTrip(input = {}) {
   };
 }
 
+// Regular tasks: "add this to every <type> trip". Shared by the app and the API.
+export const REGULAR_WHEN = ['any', 'uk', 'abroad'];
+export function normaliseRegular(list) {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : []).slice(0, 80).map((r) => {
+    const title = str(r?.title, 120);
+    if (!title) return null;
+    let id = str(r?.id, 40).replace(/[^A-Za-z0-9_-]/g, '');
+    if (!id || seen.has(id)) id = `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    seen.add(id);
+    const types = [...new Set((Array.isArray(r.types) ? r.types : []).filter((t) => TRIP_TYPES.some((x) => x.id === t)))];
+    const days = Math.min(60, Math.max(0, Math.trunc(Number(r.days)) || 0));
+    return { id, title, types, when: pick(r.when, REGULAR_WHEN, 'any'), days };
+  }).filter(Boolean);
+}
+
 export function validateTrip(input) {
   const t = normaliseTrip(input);
   const errors = [];
@@ -144,7 +160,7 @@ export function normaliseTask(t = {}, i = 0) {
 }
 
 // ---------- task generation ----------
-export function generateTasks(tripInput, today = todayISO(), entry = null) {
+export function generateTasks(tripInput, today = todayISO(), entry = null, regular = []) {
   const trip = normaliseTrip(tripInput);
   const { startDate: start, endDate: end } = trip;
   const nights = daysBetween(start, end);
@@ -452,6 +468,13 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
 
   // Afterwards
   if (work) add('expenses_claim', 'Submit expenses and receipts', 'Afterwards', 3, { anchor: 'end' });
+
+  // The person's own regular tasks for this kind of trip
+  for (const r of normaliseRegular(regular)) {
+    if (r.types.length && !r.types.includes(trip.type)) continue;
+    if (r.when !== 'any' && r.when !== trip.scope) continue;
+    add(`mine_${r.id}`, r.title, 'My tasks', -r.days, { hint: 'From your regular tasks.' });
+  }
 
   return out;
 }

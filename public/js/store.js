@@ -147,6 +147,23 @@ export async function getSession() {
 }
 export const forgetSession = () => { remove(USER_KEY); remove(CACHE_KEY); };
 
+// ---- regular tasks: guests keep them on this device, accounts keep them on the server ----
+const REGULAR_KEY = 'mtt.regular.v1';
+export async function loadRegular(user) {
+  if (user) { try { return (await api('/regular')).regular || []; } catch { return read(REGULAR_KEY + '.' + user.id, []); } }
+  return read(REGULAR_KEY, []);
+}
+export async function saveRegular(user, list) {
+  if (user) {
+    write(REGULAR_KEY + '.' + user.id, list); // offline fallback copy
+    return (await api('/regular', { method: 'PUT', body: { regular: list } })).regular;
+  }
+  write(REGULAR_KEY, list);
+  return list;
+}
+export const clearGuestRegular = () => remove(REGULAR_KEY);
+export const loadGuestRegular = () => read(REGULAR_KEY, []);
+
 export async function importGuestTrips() {
   const trips = guestTrips().map(({ id, createdAt, tasks, ...trip }) => ({ trip, tasks }));
   if (!trips.length) return [];

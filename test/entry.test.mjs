@@ -128,3 +128,18 @@ test('stay "not required" (day trip) adds no accommodation, first-day or check-o
   assert.ok(keys.includes('pack') && keys.includes('final_check'));
   assert.equal(normaliseTrip({ options: { stay: 'bogus' } }).options.stay, 'need');
 });
+import { normaliseRegular } from '../public/js/core.js';
+test('regular tasks: normalised, matched by trip type and scope, keyed so they survive re-planning', () => {
+  const reg = normaliseRegular([
+    { id: 'a', title: 'Take my football scarf', types: ['work', 'bogus'], when: 'any', days: 1 },
+    { id: 'b', title: 'Pack the guidebook', types: [], when: 'uk', days: 3 },
+    { title: '  ' }, { id: 'a', title: 'duplicate id', days: 999 },
+  ]);
+  assert.equal(reg.length, 3); assert.deepEqual(reg[0].types, ['work']); assert.equal(reg[2].days, 60); assert.notEqual(reg[2].id, 'a');
+  const k = (t) => generateTasks(t, TODAY, null, reg).filter((x) => x.key.startsWith('mine_')).map((x) => x.title);
+  assert.ok(k(trip()).includes('Take my football scarf'));                           // work trip abroad: a matches, b is UK only
+  assert.ok(!k(trip()).includes('Pack the guidebook'));
+  assert.ok(!k(trip({ type: 'holiday' })).includes('Take my football scarf'));        // other trip type: no
+  assert.deepEqual(k(trip({ type: 'holiday', scope: 'uk', country: '' })).slice(0, 1), ['Pack the guidebook']);
+  assert.equal(generateTasks(trip(), TODAY, null, reg).find((x) => x.key === 'mine_a').category, 'My tasks');
+});

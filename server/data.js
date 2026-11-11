@@ -40,6 +40,11 @@ export async function getSessionUser(sql, tokenHash) {
     WHERE s.token_hash = ${tokenHash} AND s.expires_at > now()`;
   return rows[0] || null;
 }
+export async function getRegular(sql, userId) {
+  const rows = await sql`SELECT regular FROM users WHERE id = ${userId}`;
+  return Array.isArray(rows[0]?.regular) ? rows[0].regular : [];
+}
+export const setRegular = (sql, userId, list) => sql`UPDATE users SET regular = ${JSON.stringify(list)}::jsonb WHERE id = ${userId}`;
 export const deleteSession = (sql, tokenHash) => sql`DELETE FROM sessions WHERE token_hash = ${tokenHash}`;
 export const deleteUser = (sql, userId) => sql`DELETE FROM users WHERE id = ${userId}`;
 export async function getUserWithHash(sql, userId) {

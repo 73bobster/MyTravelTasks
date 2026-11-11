@@ -1,6 +1,6 @@
 // Cloudflare Pages Function: the whole JSON API under /api/*.
 import { neon } from '@neondatabase/serverless';
-import { validateTrip, normaliseTask } from '../../public/js/core.js';
+import { validateTrip, normaliseTask, normaliseRegular } from '../../public/js/core.js';
 import {
   HttpError, json, parseCookies, sessionCookie, clearCookie, checkOrigin, readJson, COOKIE,
 } from '../../server/http.js';
@@ -84,6 +84,18 @@ export async function onRequest({ request, env, params }) {
     if (is('GET', '/me')) {
       const u = await getUser();
       return json({ user: u ? publicUser(u) : null });
+    }
+
+    if (is('GET', '/regular')) {
+      const u = await requireUser();
+      return json({ regular: await db.getRegular(sql, u.id) });
+    }
+    if (is('PUT', '/regular')) {
+      const u = await requireUser();
+      const b = await readJson(request);
+      const list = normaliseRegular(b.regular);
+      await db.setRegular(sql, u.id, list);
+      return json({ regular: list });
     }
 
     if (is('DELETE', '/me')) {

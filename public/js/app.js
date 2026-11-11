@@ -1,5 +1,5 @@
 import {
-  TRIP_TYPES, TRANSPORT, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
+  TRIP_TYPES, TRANSPORT, normaliseRegular, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
 import {
@@ -8,6 +8,7 @@ import {
 import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
   GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
+  loadRegular, saveRegular, clearGuestRegular, loadGuestRegular,
 } from './store.js';
 
 const COUNTRIES = ['Albania', 'Australia', 'Austria', 'Belgium', 'Bulgaria', 'Canada', 'Croatia', 'Cyprus', 'Czechia', 'Denmark',
@@ -20,7 +21,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [],
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [],
 };
 
 const $app = () => document.getElementById('app');
@@ -50,6 +51,7 @@ function route() {
   if (parts[0] === 'register') return { name: 'auth', mode: 'register' };
   if (parts[0] === 'account') return { name: 'account' };
   if (parts[0] === 'docs') return { name: 'docs' };
+  if (parts[0] === 'regular') return { name: 'regular' };
   return { name: 'home' };
 }
 
@@ -104,7 +106,7 @@ function viewHome() {
   }
 
   return `<div class="stack">
-    <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
+    <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/regular">Regular tasks</a><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
     ${banner}
     ${rows.map(({ t, s }) => `
       <a class="card trip-card" href="#/trip/${esc(t.id)}">
@@ -403,6 +405,13 @@ function viewTrip(id) {
           <label class="field">Who<select name="owner">${ownerList(trip).map((o) => `<option>${esc(o)}</option>`).join('')}</select></label>
           <label class="field">Due<input type="date" name="dueDate"></label>
         </div>
+        <label class="field">Repeat
+          <select name="repeat">
+            <option value="trip">This trip only</option>
+            <option value="type">Every ${esc((TRIP_TYPES.find((t) => t.id === trip.type)?.label || 'trip').toLowerCase())} I plan</option>
+            <option value="all">Every trip I plan</option>
+          </select>
+          <span class="help">Repeating tasks are kept in <a href="#/regular">Regular tasks</a> and added whenever you plan or edit a matching trip.</span></label>
         <div><button class="btn btn-primary btn-small" type="submit">Add task</button></div>
       </form>
     </details>
@@ -624,6 +633,7 @@ export function render() {
   } else if (r.name === 'trip') { html = viewTrip(r.id); title = `${findTrip(r.id)?.name || 'Trip'} · My Travel Tasks`; }
   else if (r.name === 'auth') { html = viewAuth(r.mode); title = (r.mode === 'register' ? 'Create account' : 'Sign in') + ' · My Travel Tasks'; }
   else if (r.name === 'account') { html = viewAccount(); title = 'Account · My Travel Tasks'; }
+  else if (r.name === 'regular') { html = viewRegular(); title = 'Regular tasks · My Travel Tasks'; }
   else if (r.name === 'docs') { html = viewDocs(); title = 'My documents · My Travel Tasks'; }
   else html = viewHome();
 
@@ -674,7 +684,7 @@ async function submitTrip() {
   if (errors.length) { state.formErrors = errors; render(); window.scrollTo?.(0, 0); return; }
   state.busy = true; state.formErrors = []; render();
   try {
-    const generated = generateTasks(trip, todayISO(), tripEntry(trip));
+    const generated = generateTasks(trip, todayISO(), tripEntry(trip), state.regular);
     let saved;
     if (state.draftFor !== 'new') {
       const existing = findTrip(state.draftFor);
@@ -715,6 +725,14 @@ async function submitAuth(form) {
       }
       catch (e) { note += `, but your guest trips could not be moved (${e.message})`; }
     }
+    try {
+      const server = await loadRegular(state.user);
+      const mine = loadGuestRegular();
+      state.regular = mine.length && fd.get('bring') === 'on'
+        ? await saveRegular(state.user, normaliseRegular([...server, ...mine.filter((m) => !server.some((x) => x.title === m.title))]))
+        : server;
+      if (mine.length && fd.get('bring') === 'on') clearGuestRegular();
+    } catch { state.regular = []; }
     await loadTrips();
     state.busy = false;
     location.hash = '#/';
@@ -728,6 +746,7 @@ async function signOut() {
   try { await api('/auth/logout', { method: 'POST' }); } catch { /* cookie is cleared server side when online */ }
   forgetSession();
   state.user = null; state.store = new GuestStore(); state.offline = false;
+  state.regular = await loadRegular(null);
   await loadTrips();
   location.hash = '#/';
   toast('Signed out');
@@ -742,6 +761,7 @@ async function deleteAccount(form) {
     await removeWhere((d) => d.owner === scope); await refreshDocs();
     forgetSession();
     state.user = null; state.store = new GuestStore();
+    state.regular = await loadRegular(null);
     await loadTrips();
     location.hash = '#/';
     toast('Your account has been deleted');
@@ -751,7 +771,7 @@ async function deleteAccount(form) {
 }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), trips: state.trips }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), trips: state.trips, regularTasks: state.regular }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'my-travel-tasks.json';
@@ -764,6 +784,19 @@ async function addTask(form) {
   const fd = new FormData(form);
   const title = String(fd.get('title') || '').trim();
   if (!title) return;
+  const repeat = String(fd.get('repeat') || 'trip');
+  const trip0 = findTrip(tripId);
+  if (repeat !== 'trip' && trip0) {
+    try {
+      const due = fd.get('dueDate');
+      const days = due ? Math.max(0, daysBetween(due, trip0.startDate)) : 1;
+      await saveRegularList([...state.regular, { title, types: repeat === 'type' ? [trip0.type] : [], when: 'any', days }]);
+      await regenerateTrip(tripId);
+      render();
+      toast('Added, and kept for future trips');
+    } catch (e) { toast(e.message); }
+    return;
+  }
   try {
     const task = await state.store.addTask(tripId, {
       title, category: 'My tasks', owner: fd.get('owner') || 'Everyone', dueDate: fd.get('dueDate') || null, notes: '',
@@ -771,6 +804,52 @@ async function addTask(form) {
     findTrip(tripId).tasks.push(task);
     render();
     toast('Task added');
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- regular tasks ----------
+async function saveRegularList(list) {
+  state.regular = await saveRegular(state.user, normaliseRegular(list));
+}
+
+async function regenerateTrip(tripId) {
+  const existing = findTrip(tripId);
+  const t = normaliseTrip(existing);
+  const saved = await state.store.update(tripId, t, mergeTasks(existing.tasks, generateTasks(t, todayISO(), tripEntry(t), state.regular)));
+  state.trips = state.trips.map((x) => (x.id === saved.id ? saved : x));
+}
+
+function viewRegular() {
+  const label = (r) => (r.types.length ? r.types.map((id) => TRIP_TYPES.find((t) => t.id === id)?.label || id).join(', ') : 'Every trip');
+  const when = { any: 'UK or abroad', uk: 'UK trips', abroad: 'Trips abroad' };
+  return `<div class="stack">
+    <div><a href="#/" class="small">← All trips</a></div>
+    <h1>Regular tasks</h1>
+    <p class="notice">Tasks that are yours, such as "take my football scarf". They are added to every trip of the kind you choose, when you plan or edit it. They are private to you and don't change anyone else's checklist. ${state.user ? 'They are saved to your account.' : 'They are saved on this device. Create an account to keep them across devices.'}</p>
+    ${state.regular.length ? `<ul class="doc-list">${state.regular.map((r) => `<li>
+      <div class="doc-main"><strong>${esc(r.title)}</strong><span class="small muted">${esc(label(r))} · ${esc(when[r.when])} · ${r.days === 0 ? 'on the day' : `${plural(r.days, 'day')} before`}</span></div>
+      <div class="doc-actions"><button type="button" class="btn btn-ghost btn-small" data-action="remove-regular" data-id="${esc(r.id)}" aria-label="Remove ${esc(r.title)}">Remove</button></div></li>`).join('')}</ul>` : '<div class="card empty"><p class="muted">No regular tasks yet.</p></div>'}
+    <section class="card"><h2>Add a regular task</h2>
+      <form data-form="regular" class="stack" novalidate>
+        <label class="field">Task<input type="text" name="title" maxlength="120" placeholder="e.g. Take my football scarf" autocomplete="off"></label>
+        <div class="grid">
+          <label class="field">Add it to<select name="type"><option value="">Every trip</option>${TRIP_TYPES.map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join('')}</select></label>
+          <label class="field">Where<select name="when"><option value="any">UK or abroad</option><option value="uk">UK trips only</option><option value="abroad">Trips abroad only</option></select></label>
+        </div>
+        <label class="field">Due<select name="days"><option value="0">On the day</option><option value="1" selected>1 day before</option><option value="2">2 days before</option><option value="7">A week before</option><option value="14">2 weeks before</option></select></label>
+        <div><button class="btn btn-primary btn-small" type="submit">Add regular task</button></div>
+      </form></section>
+    <p class="small muted">New regular tasks reach a trip you have already planned when you open it, choose "Edit trip details" and save.</p>
+  </div>`;
+}
+
+async function addRegular(form) {
+  const fd = new FormData(form);
+  const title = String(fd.get('title') || '').trim();
+  if (!title) { toast('Type the task first.'); return; }
+  try {
+    await saveRegularList([...state.regular, { title, types: fd.get('type') ? [fd.get('type')] : [], when: fd.get('when'), days: Number(fd.get('days')) }]);
+    render(); toast('Added');
   } catch (e) { toast(e.message); }
 }
 
@@ -792,6 +871,9 @@ function onClick(e) {
         const trip = findTrip(r.id);
         state.store.removeTask(r.id, id).then(() => { trip.tasks = trip.tasks.filter((t) => t.id !== id); render(); }).catch((err) => toast(err.message));
       }
+      break;
+    case 'remove-regular':
+      saveRegularList(state.regular.filter((x) => x.id !== id)).then(render).catch((err) => toast(err.message));
       break;
     case 'open-doc': openDoc(id); break;
     case 'remove-doc':
@@ -873,6 +955,7 @@ function onSubmit(e) {
     case 'auth': submitAuth(form); break;
     case 'add-task': addTask(form); break;
     case 'doc': saveDoc(form); break;
+    case 'regular': addRegular(form); break;
     case 'delete-account': deleteAccount(form); break;
     default: break;
   }
@@ -886,6 +969,7 @@ export async function boot() {
   loadAlerts().then((a) => { state.alerts = a; if (state.ready) render(); });
   loadRules('GB').then((r) => { state.rules = r; if (state.ready) render(); });
   await refreshDocs();
+  state.regular = await loadRegular(user);
   await loadTrips();
   state.offline = user ? offline || state.offline : false; // guests work fully offline, so no warning for them
   state.ready = true;
