@@ -96,6 +96,7 @@ export function normaliseTrip(input = {}) {
       visa: pick(o.visa, PASSPORT, 'unsure'),
       stay: pick(o.stay, STAY, 'need'),
       carHire: !!o.carHire,
+      parking: !!o.parking,
       drivingAbroad: !!o.drivingAbroad,
       handLuggageOnly: !!o.handLuggageOnly,
       childConsent: !!o.childConsent,
@@ -347,11 +348,17 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
   if (o.carHire) {
     add('car_hire', 'Book car hire (check excess cover and who can drive)', 'Book', abroad ? -30 : -21, { dependsOn: ['book_transport'] });
   }
+  if (o.parking && modes.some((m) => m !== 'car')) {
+    add('book_parking', `Book ${hub} parking (cheaper if booked ahead)`, 'Book', -21, {
+      dependsOn: ['book_transport'],
+      hint: 'Check the car park location and how long it takes to walk or shuttle to the entrance. Save the booking confirmation.',
+    });
+  }
   if (modes.some((m) => m !== 'car')) {
     add('hub_transport', `Plan how you get to the ${hub} and back (parking, taxi or lift)`, 'Book', -10, { dependsOn: ['book_transport'] });
   }
   if (abroad || flying) {
-    add('transfers', 'Arrange transfers or local transport at the destination', 'Book', -14, { dependsOn: ['book_transport'] });
+    add('transfers', 'Arrange how you get from the arrival point to where you are staying (transfer, taxi or car hire pick-up)', 'Book', -14, { dependsOn: ['book_transport'] });
   }
 
   // Prepare
@@ -386,6 +393,42 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
         ? `Pack ${t.name}'s things (nappies, milk or formula, spare clothes, pram or car seat)`
         : `Pack ${t.name}'s things (snacks, entertainment, comforter, spare clothes)`,
       'Prepare', -2);
+  }
+  if (work) {
+    add('work_clothes', 'Pack work clothes: outfits, shoes, socks, belt, tie or lanyard, laundry cover', 'Prepare', -3, {
+      hint: 'Check the dress code and the weather. Lay it all out and tick it off before it goes in the bag.',
+    });
+    add('work_access', 'Sort work door entry: building pass, visitor registration or who meets you at reception', 'Prepare', -7, {
+      hint: 'Ask your host for the address, the time to arrive and what ID to bring. Visitor passes often need a name sent ahead.',
+    });
+    add('work_contacts', 'Save work contact details: who, phone numbers, address and an emergency contact', 'Prepare', -5, {
+      hint: 'Save them in your phone and on paper, in case the battery dies.',
+    });
+  }
+  add('wallet', abroad ? 'Check wallet: cards, some local currency, ID and a backup card' : 'Check wallet: cards, cash, ID and railcard or tickets', 'Prepare', -1, {
+    hint: abroad ? `Make sure your cards work abroad (tell your bank), carry some local currency for ${place}, and keep a backup card separate from your wallet.` : '',
+  });
+  add('chargers', 'Pack phone and watch chargers (and a power bank)', 'Prepare', -2);
+  add('earbuds', 'Pack earbuds or headphones', 'Prepare', -2);
+  add('glasses', 'Pack glasses or contact lenses (and spares or a case)', 'Prepare', -2);
+  add('medicine', 'Pack medicine and any prescriptions', 'Prepare', -2, {
+    hint: abroad
+      ? `Keep medicines in their original packaging, in hand luggage, with a copy of the prescription. Some countries restrict certain medicines, so check the rules for ${place}.`
+      : 'Take enough for the trip plus a few spare days.',
+  });
+  add('toothbrush', 'Pack toothbrush and toothpaste', 'Prepare', -1, {
+    hint: o.handLuggageOnly ? 'Toothpaste counts as a liquid in hand luggage: 100ml or less, in a clear bag.' : '',
+  });
+  add('razor', 'Pack razor and shaving kit', 'Prepare', -1, {
+    hint: o.handLuggageOnly ? 'Check the airline rules for razors and blades in hand luggage.' : '',
+  });
+  add('deodorant', 'Pack deodorant', 'Prepare', -1, {
+    hint: o.handLuggageOnly ? 'Aerosols and roll-ons count as liquids in hand luggage: 100ml or less, in a clear bag.' : '',
+  });
+  if (o.stay !== 'none') {
+    add('first_day_kit', 'Pack first-day essentials for the accommodation: teabags or coffee, sugar, snacks, a mug', 'Prepare', -2, {
+      hint: 'So you are not hunting for a shop on arrival. Check what the accommodation already provides.',
+    });
   }
   add('docs_offline', 'Save tickets, bookings and key documents to your phone (and print the essentials)', 'Prepare', -2, {
     dependsOn: ['book_transport', 'book_stay'],

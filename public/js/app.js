@@ -320,7 +320,7 @@ function newDraft() {
     name: '', type: 'holiday', who: 'me', scope: 'uk', destination: '', country: '', startDate: '', endDate: '',
     organiser: myName(), transport: [],
     travellers: [{ name: myName(), role: 'adult', passport: 'yes', isMe: true }],
-    options: { visa: 'unsure', stay: 'need', carHire: false, drivingAbroad: false, handLuggageOnly: false, childConsent: false, pets: 'none' },
+    options: { visa: 'unsure', stay: 'need', carHire: false, parking: false, drivingAbroad: false, handLuggageOnly: false, childConsent: false, pets: 'none' },
   };
 }
 function draftFromTrip(trip) {
@@ -437,6 +437,7 @@ function viewForm(editingId) {
       <div class="choices">
         <label class="choice"><input type="checkbox" data-d="options.carHire" ${o.carHire ? 'checked' : ''}><span>I'll hire a car</span></label>
         ${abroad && driving ? `<label class="choice"><input type="checkbox" data-d="options.drivingAbroad" ${o.drivingAbroad ? 'checked' : ''}><span>I'll be driving abroad</span></label>` : ''}
+        ${d.transport.some((m) => m !== 'car') ? `<label class="choice"><input type="checkbox" data-d="options.parking" ${o.parking ? 'checked' : ''}><span>I'll park at the ${flying ? 'airport' : 'station or port'}<span class="help">Adds a parking booking task</span></span></label>` : ''}
         ${flying ? `<label class="choice"><input type="checkbox" data-d="options.handLuggageOnly" ${o.handLuggageOnly ? 'checked' : ''}><span>Hand luggage only</span></label>` : ''}
         ${abroad && anyChild ? `<label class="choice"><input type="checkbox" data-d="options.childConsent" ${o.childConsent ? 'checked' : ''}><span>Children travelling without both parents<span class="help">Adds a consent letter task</span></span></label>` : ''}
       </div>

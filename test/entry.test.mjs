@@ -115,3 +115,10 @@ test('dog on a train adds a rules task with the guide link', () => {
   assert.ok(d && /nationalrail\.co\.uk\/on-the-train\/train-travel-with-pets\//.test(d.hint) && /thetrainline\.com/.test(d.hint) && d.hint.length < 1000);
   assert.ok(!generateTasks(trip({ scope: 'uk', transport: ['car'], options: { pets: 'travelling' } }), TODAY).some((x) => x.key === 'dogs_on_train'));
 });
+test('packing and work tasks added; parking only when chosen; work tasks only on work trips', () => {
+  const keys = (t) => generateTasks(t, TODAY).map((x) => x.key);
+  const w = keys(trip({ options: { parking: true, stay: 'booked' } }));
+  for (const k of ['work_clothes', 'work_access', 'work_contacts', 'wallet', 'chargers', 'earbuds', 'glasses', 'medicine', 'toothbrush', 'razor', 'deodorant', 'first_day_kit', 'book_parking', 'transfers']) assert.ok(w.includes(k), k);
+  const h = keys(trip({ type: 'holiday', options: { stay: 'none' } }));
+  assert.ok(!h.includes('work_clothes') && !h.includes('book_parking') && !h.includes('first_day_kit') && h.includes('toothbrush'));
+});
