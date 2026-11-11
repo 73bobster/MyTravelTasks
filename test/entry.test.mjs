@@ -109,3 +109,9 @@ test('a changed alert overrides confidence in the status', () => {
   assert.equal(s.level, 'changed'); assert.equal(s.stale, true);
   assert.equal(entryFor(trip(), rules, TODAY, { changed: { spain: { updated: '2026-11-14', change: '' } } }).status.level, 'changed');
 });
+test('dog on a train adds a rules task with the guide link', () => {
+  const t = trip({ scope: 'uk', country: '', transport: ['train'], options: { pets: 'travelling' } });
+  const d = generateTasks(t, TODAY).find((x) => x.key === 'dogs_on_train');
+  assert.ok(d && /thetrainline\.com\/trains\/great-britain\/dogs-on-trains$/.test(d.hint));
+  assert.ok(!generateTasks(trip({ scope: 'uk', transport: ['car'], options: { pets: 'travelling' } }), TODAY).some((x) => x.key === 'dogs_on_train'));
+});
