@@ -1,6 +1,6 @@
 import {
   TRIP_TYPES, TRANSPORT, normaliseRegular, suppressKey, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
-  taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween, addDays,
+  taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween, addDays, countdownBadge,
 } from './core.js';
 import {
   KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent, docBlob, docKindFor, taskDocs,
@@ -116,12 +116,17 @@ function viewHome() {
     ${banner}
     ${rows.map(({ t, s }) => `
       <a class="card trip-card" href="#/trip/${esc(t.id)}">
-        <div class="row between"><h2>${esc(t.name)}</h2>${overallPill(s)}</div>
-        <div class="meta">${esc(where(t))} · ${esc(tripDates(t))}</div>
-        <div class="row between small">
-          <strong>${esc(s.countdown.label)}</strong>
-          <span class="muted">${s.done} of ${s.total} done</span>
-        </div>
+        ${(b => `<div class="trip-card-top">
+          <div class="days-circle tone-${b.tone}" role="img" aria-label="${esc(s.countdown.label)}"><span class="dc-big">${esc(b.big)}</span><span class="dc-unit">${esc(b.unit)}</span></div>
+          <div class="trip-card-main">
+            <div class="row between"><h2>${esc(t.name)}</h2>${overallPill(s)}</div>
+            <div class="meta">${esc(where(t))} · ${esc(tripDates(t))}</div>
+            <div class="row between small">
+              <strong>${esc(s.countdown.label)}</strong>
+              <span class="muted">${s.done} of ${s.total} done</span>
+            </div>
+          </div>
+        </div>`)(countdownBadge(s.countdown))}
         <progress max="100" value="${s.pct}" aria-label="${s.pct}% of tasks done"></progress>
       </a>`).join('')}
   </div>`;

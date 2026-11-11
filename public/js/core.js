@@ -543,6 +543,19 @@ export function taskRag(task, all, today) {
   return 'green';
 }
 
+// Compact circle content for the home trip cards: big number, small unit.
+export function countdownBadge(c) {
+  if (c.state === 'upcoming') {
+    if (c.days >= 14) return { big: String(Math.round(c.days / 7)), unit: 'weeks', tone: 'far' };
+    if (c.days === 1) return { big: '1', unit: 'day', tone: 'soon' };
+    return { big: String(c.days), unit: 'days', tone: c.days <= 7 ? 'soon' : 'near' };
+  }
+  if (c.state === 'travelling') {
+    return c.days === 0 ? { big: 'Go!', unit: 'today', tone: 'now' } : { big: String(c.big), unit: c.unit.replace('of ', 'of '), tone: 'now' };
+  }
+  return { big: '✓', unit: 'done', tone: 'done' };
+}
+
 export function countdownFor(trip, today) {
   const toStart = daysBetween(today, trip.startDate);
   const toEnd = daysBetween(today, trip.endDate);
