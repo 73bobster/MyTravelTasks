@@ -9,6 +9,7 @@ export const KINDS = [
   { id: 'licence', label: 'Driving licence or permit', level: 'person' },
   { id: 'ticket', label: 'Ticket or boarding pass', level: 'trip' },
   { id: 'booking', label: 'Booking confirmation', level: 'trip' },
+  { id: 'approval', label: 'Visa, ESTA or entry approval', level: 'trip' },
   { id: 'carhire', label: 'Car hire or parking', level: 'trip' },
   { id: 'other', label: 'Other', level: 'both' },
 ];
@@ -67,6 +68,7 @@ export async function addDoc(meta, file) {
     id: newId(), owner: meta.owner, level: meta.level === 'trip' ? 'trip' : 'person',
     person: String(meta.person || '').trim().slice(0, 40), tripId: meta.level === 'trip' ? meta.tripId : null,
     kind: KINDS.some((k) => k.id === meta.kind) ? meta.kind : 'other',
+    taskKey: meta.level === 'trip' ? String(meta.taskKey || '').slice(0, 80) : '',
     label: String(meta.label || file.name || '').trim().slice(0, 80) || 'Document',
     fileName: file.name || '', type: file.type, size: file.size,
     validFrom: /^\d{4}-\d{2}-\d{2}$/.test(meta.validFrom || '') ? meta.validFrom : '',
@@ -108,6 +110,18 @@ export function docsForTrip(all, owner, trip) {
   };
 }
 // Does this insurance document cover the whole trip? 'ok' | 'outside' | 'undated'
+// Tasks that produce a document worth keeping with them, and the kind of document to suggest.
+const DOC_TASKS = {
+  book_transport: 'ticket', checkin: 'ticket', return_checkin: 'ticket', book_stay: 'booking', stay_confirm: 'booking',
+  car_hire: 'carhire', book_parking: 'carhire', transfers: 'booking', visa: 'approval', carry_invite: 'other', work_access: 'other',
+};
+export function docKindFor(key) {
+  const base = String(key || '').split('@')[0];
+  if (/^form_/.test(base)) return 'approval';
+  return DOC_TASKS[base] || '';
+}
+export const taskDocs = (all, owner, trip, key) => all.filter((d) => d.owner === owner && d.level === 'trip' && d.tripId === trip.id && d.taskKey === key);
+
 export function coverCheck(doc, trip) {
   if (!doc.validFrom && !doc.expires) return 'undated';
   if (doc.validFrom && doc.validFrom > trip.startDate) return 'outside';

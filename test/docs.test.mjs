@@ -48,3 +48,18 @@ test('guest files move to the account; unmatched trip files are dropped; removal
   const left = await allDocs(); assert.equal(left.length, 1); await removeDoc(left[0].id); assert.equal((await allDocs()).length, 0);
   await assert.rejects(() => addDoc({ owner: 'guest', level: 'person', person: 'Rob' }, file('a.exe', 'application/zip')), /photos and PDFs/);
 });
+import { docKindFor, taskDocs } from '../public/js/docs.js';
+test('which tasks take documents, and per-task lists', async () => {
+  assert.equal(docKindFor('book_transport@flight'), 'ticket');
+  assert.equal(docKindFor('stay_confirm'), 'booking');
+  assert.equal(docKindFor('form_tdac@rob'), 'approval');
+  assert.equal(docKindFor('visa@rob'), 'approval');
+  assert.equal(docKindFor('pack'), ''); assert.equal(docKindFor('chargers'), '');
+  await addDoc({ owner: 'guest', level: 'trip', tripId: 't1', taskKey: 'book_stay', kind: 'booking', label: 'Hotel' }, file('h.pdf'));
+  await addDoc({ owner: 'guest', level: 'trip', tripId: 't1', taskKey: 'book_transport@flight', kind: 'ticket', label: 'Flight' }, file('f.pdf'));
+  const all = await allDocs();
+  assert.deepEqual(taskDocs(all, 'guest', trip, 'book_stay').map((d) => d.label), ['Hotel']);
+  assert.deepEqual(taskDocs(all, 'guest', trip, 'book_transport@flight').map((d) => d.label), ['Flight']);
+  assert.deepEqual(taskDocs(all, 'guest', trip, 'pack'), []);
+  await removeWhere((d) => d.owner === 'guest');
+});

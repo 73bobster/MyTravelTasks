@@ -146,3 +146,23 @@ test('UI: coming back from the camera or file picker does not wipe a form being 
   document.dispatchEvent(new window.Event('visibilitychange')); await tick(50);
   assert.notEqual($('form[data-form="doc"] [name="label"]'), label, 'empty forms still refresh');
 });
+
+import { addDoc as addDoc2, allDocs as allDocs2 } from '../public/js/docs.js';
+test('UI: document-friendly tasks show an add-document panel with the right default kind; others do not', async () => {
+  const tripId = state.trips[0].id;
+  window.location.hash = `#/trip/${tripId}`; await tick();
+  const open = async (re) => {
+    let li = $$('.task').find((x) => re.test(x.textContent));
+    if (li.querySelector('[data-action="expand"]').getAttribute('aria-expanded') !== 'true') { li.querySelector('[data-action="expand"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await tick(); }
+    return $$('.task').find((x) => re.test(x.textContent));
+  };
+  const stay = await open(/Book accommodation|Book your stay|accommodation/i);
+  assert.ok(stay.querySelector('form[data-form="doc"][data-task]'), 'stay task has a document form');
+  assert.equal(stay.querySelector('form[data-form="doc"]').dataset.task, state.trips[0].tasks.find((t) => /accommodation|stay/i.test(t.title) && t.key.startsWith('book_stay')).key);
+  const pack = await open(/Pack deodorant|Pack toothbrush/);
+  assert.ok(!pack.querySelector('form[data-form="doc"]'), 'packing task has none');
+  const key = stay.querySelector('form[data-form="doc"]').dataset.task;
+  await addDoc2({ owner: 'guest', level: 'trip', tripId, taskKey: key, kind: 'booking', label: 'Hotel confirmation' }, new window.File([new Uint8Array(100)], 'h.pdf', { type: 'application/pdf' }));
+  state.docs = await allDocs2(); window.dispatchEvent(new window.Event('hashchange')); await tick();
+  assert.match(text(), /1 document/); assert.match(text(), /Hotel confirmation/);
+});

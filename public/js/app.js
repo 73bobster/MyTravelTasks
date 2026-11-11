@@ -3,7 +3,7 @@ import {
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
 import {
-  KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent, docBlob,
+  KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent, docBlob, docKindFor, taskDocs,
 } from './docs.js';
 import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
@@ -155,12 +155,14 @@ function taskRow(trip, task, today) {
         <span class="chip">${esc(task.owner)}</span>
         ${done ? '<span>Done</span>' : `<span class="due ${dueCls}">${esc(dueLabel(task.dueDate, today))}</span>`}
         ${task.isKey && !done ? '<span class="chip key">Key</span>' : ''}
+        ${taskDocCount(trip, task) ? `<span class="chip">${taskDocCount(trip, task)} document${taskDocCount(trip, task) > 1 ? 's' : ''}</span>` : ''}
         ${waiting.length ? `<span class="chip waiting">Waiting on: ${esc(waiting.slice(0, 2).map((w) => w.title.replace(/^(Apply for|Check|Find|Book|Get)\s+/i, '')).join(', '))}${waiting.length > 2 ? '…' : ''}</span>` : ''}
       </div>
       ${open ? `
       <div class="task-detail">
         ${task.hint ? `<p class="hint">${linkify(task.hint)}</p>` : ''}
         ${task.key === 'entry_rules' ? viewEntryCard(trip) : ''}
+        ${viewTaskDocs(trip, task)}
         <div class="two">
           <label class="field">Who
             <select data-field="owner" data-id="${esc(task.id)}">${owners.map((o) => `<option ${o === task.owner ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
@@ -260,13 +262,13 @@ function peopleNames() {
   return [...set.values()];
 }
 
-function docForm(level, tripId = '') {
+function docForm(level, tripId = '', taskKey = '', defKind = '') {
   const kinds = KINDS.filter((k) => k.level === level || k.level === 'both');
-  return `<form data-form="doc" data-level="${level}" data-trip="${esc(tripId)}" class="stack doc-form" novalidate>
+  return `<form data-form="doc" data-level="${level}" data-trip="${esc(tripId)}" data-task="${esc(taskKey)}" class="stack doc-form" novalidate>
     ${level === 'person' ? `<label class="field">Whose is it?<input type="text" name="person" maxlength="40" list="people" value="${esc(myName())}" autocomplete="off">
       <datalist id="people">${peopleNames().map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>` : ''}
     <div class="grid">
-      <label class="field">What is it?<select name="kind">${kinds.map((k) => `<option value="${k.id}">${esc(k.label)}</option>`).join('')}</select></label>
+      <label class="field">What is it?<select name="kind">${kinds.map((k) => `<option value="${k.id}"${k.id === defKind ? ' selected' : ''}>${esc(k.label)}</option>`).join('')}</select></label>
       <label class="field">Name it<input type="text" name="label" maxlength="80" placeholder="${level === 'person' ? 'e.g. Annual multi-trip policy' : 'e.g. Outbound boarding pass'}" autocomplete="off"></label>
     </div>
     ${level === 'person' ? `<div class="grid">
@@ -277,6 +279,26 @@ function docForm(level, tripId = '') {
     <p class="warn small"><strong>Saved on this device only.</strong> ${esc(NOTE_LOSS)}</p>
     <div><button class="btn btn-primary btn-small" type="submit">Save on this device</button></div>
   </form>`;
+}
+
+function viewTaskDocs(trip, task) {
+  if (task.key === 'insurance') {
+    const { people } = docsForTrip(state.docs, docOwner(), trip);
+    const ins = people.filter((d) => d.kind === 'insurance');
+    return `<div class="task-docs"><h4 class="small-h">Your travel insurance</h4>
+      ${ins.length ? docList(ins, { person: true }) : '<p class="small muted">No policy saved for the people on this trip yet.</p>'}
+      <p class="small"><a href="#/docs">Add or change a policy in My documents</a>. It is saved once and used on every trip.</p></div>`;
+  }
+  const kind = docKindFor(task.key);
+  if (!kind) return '';
+  const mine = taskDocs(state.docs, docOwner(), trip, task.key);
+  return `<div class="task-docs"><h4 class="small-h">Documents for this task</h4>
+    ${docList(mine)}
+    <details${mine.length ? '' : ' open'}><summary>Add a photo or file</summary>${docForm('trip', trip.id, task.key, kind)}</details></div>`;
+}
+
+function taskDocCount(trip, task) {
+  return docKindFor(task.key) ? taskDocs(state.docs, docOwner(), trip, task.key).length : 0;
 }
 
 function viewTripDocs(trip) {
@@ -326,7 +348,7 @@ async function saveDoc(form) {
   if (status) status.textContent = 'Saving…';
   try {
     await addDoc({
-      owner: docOwner(), level, person, tripId: form.dataset.trip, kind: fd.get('kind'), label: fd.get('label'),
+      owner: docOwner(), level, person, tripId: form.dataset.trip, taskKey: form.dataset.task, kind: fd.get('kind'), label: fd.get('label'),
       validFrom: fd.get('validFrom'), expires: fd.get('expires'),
     }, fd.get('file'));
     await refreshDocs();
@@ -914,7 +936,12 @@ function onClick(e) {
   const { action, id, value } = el.dataset;
   const r = route();
   switch (action) {
-    case 'toggle': patchTask(r.id, id, { status: findTrip(r.id)?.tasks.find((t) => t.id === id)?.status === 'done' ? 'todo' : 'done' }); break;
+    case 'toggle': {
+      const t0 = findTrip(r.id)?.tasks.find((t) => t.id === id);
+      patchTask(r.id, id, { status: t0?.status === 'done' ? 'todo' : 'done' });
+      if (t0 && t0.status !== 'done' && docKindFor(t0.key) && !taskDocCount(findTrip(r.id), t0)) toast('Done. Open the task to save the ticket or confirmation with it.');
+      break;
+    }
     case 'expand': state.open.has(id) ? state.open.delete(id) : state.open.add(id); render(); break;
     case 'owner': state.owner = value; render(); break;
     case 'view': state.view = value; render(); break;
