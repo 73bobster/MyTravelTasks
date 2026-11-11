@@ -296,6 +296,21 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
     }
   }
 
+  // Warnings and disruption: strikes, air traffic control, extreme weather
+  {
+    const adviceUrl = rule ? `https://www.gov.uk/foreign-travel-advice/${rule.fcdo}` : 'https://www.gov.uk/foreign-travel-advice';
+    const where = abroad
+      ? `Read the UK government's travel advice for ${place} (${adviceUrl}); its "Warnings and insurance" and "Safety and security" sections cover strikes, protests, extreme weather and other risks. If the page offers "Get email alerts", sign up.`
+      : 'Check the Met Office weather warnings (https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings) and the rail, road or ferry operator for disruption and planned strikes.';
+    add('travel_alerts', abroad ? `Check warnings for ${place}: strikes, air traffic control disruption, heatwaves and storms` : 'Check for strikes, travel disruption and weather warnings', 'Prepare', -7, {
+      hint: `${where} Also check your airline, ferry or rail operator for strike notices.`,
+    });
+    add('travel_alerts_final', 'Re-check strikes, disruption and weather warnings the day before', 'Prepare', -1, {
+      dependsOn: ['travel_alerts'],
+      hint: 'Plans can change in the last days. Check your operator\'s app or website and the sources from the earlier check.',
+    });
+  }
+
   // Book
   const bookDeps = [...(abroad ? ['passport'] : []), ...(work ? ['approval'] : [])];
   const bookings = {

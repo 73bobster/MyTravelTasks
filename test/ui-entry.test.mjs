@@ -48,8 +48,16 @@ test('UI: entry rules card shows confidence, dates, official links and the check
   const flight = $('input[data-list="transport"][value="flight"]'); flight.checked = true; fire(flight, 'change'); await tick();
   $('form[data-form="trip"]').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
   await tick(50);
+  assert.doesNotMatch(text(), /Entry rules for Spain/, 'detail is behind the task, not on the page');
+  const row = $$('.task').find((li) => /official entry rules for Spain/.test(li.textContent));
+  assert.ok(row, 'entry rules task exists');
+  row.querySelector('[data-action="expand"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await tick();
+  assert.ok($$('.task').some((li) => /alerts|warnings for Spain/i.test(li.textContent)), 'warnings task exists');
   const t = text();
   assert.match(t, /Entry rules for Spain/);
+  assert.match(t, /UK government \(UK passport\)/);
+  assert.match(t, /The country you are visiting: Spain and the EU/);
+  assert.ok($$('.entry a[href*="exteriores.gob.es"]').length === 1, 'destination government link');
   assert.match(t, /High confidence/);
   assert.match(t, /Checked 11 Nov 2026/);
   assert.match(t, /GOV\.UK page updated 10 Nov 2026/);

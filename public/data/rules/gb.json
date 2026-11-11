@@ -106,6 +106,11 @@
      "label": "GOV.UK: Renew or replace your adult passport",
      "url": "https://www.gov.uk/renew-adult-passport",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Your Europe (EU): travel documents for non-EU nationals",
+     "url": "https://europa.eu/youreurope/citizens/travel/entry-exit/non-eu-nationals/index_en.htm",
+     "kind": "destination"
     }
    ]
   }
@@ -151,6 +156,11 @@
      "label": "GOV.UK: Travel to Spain for work",
      "url": "https://www.gov.uk/guidance/travel-to-spain-for-work",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Spanish Ministry of Foreign Affairs: conditions for entry into Spain",
+     "url": "https://exteriores.gob.es/Embajadas/dublin/en/ServiciosConsulares/Paginas/Consular/Condiciones-de-entrada-en-Espana.aspx",
+     "kind": "destination"
     }
    ]
   },
@@ -183,6 +193,11 @@
      "label": "GOV.UK: France entry requirements",
      "url": "https://www.gov.uk/foreign-travel-advice/france/entry-requirements",
      "kind": "gov-uk"
+    },
+    {
+     "label": "France-Visas (French government): your arrival in France",
+     "url": "https://france-visas.gouv.fr/en/web/france-visas/votre-arrivee-en-france",
+     "kind": "destination"
     }
    ]
   },
@@ -212,6 +227,11 @@
      "label": "GOV.UK: Italy entry requirements",
      "url": "https://www.gov.uk/foreign-travel-advice/italy/entry-requirements",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Italian Ministry of Foreign Affairs: Visa for Italy",
+     "url": "https://vistoperitalia.esteri.it/?lang=en",
+     "kind": "destination"
     }
    ]
   },
@@ -303,6 +323,11 @@
      "label": "GOV.UK: Germany entry requirements",
      "url": "https://www.gov.uk/foreign-travel-advice/germany/entry-requirements",
      "kind": "gov-uk"
+    },
+    {
+     "label": "German Federal Foreign Office: visa and entry requirements",
+     "url": "https://www.auswaertiges-amt.de/en/visa-service/231148-231148",
+     "kind": "destination"
     }
    ]
   },

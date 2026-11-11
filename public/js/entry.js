@@ -14,6 +14,8 @@ export const DISCLAIMER =
   'Please check the official government pages linked here, and your airline and the embassy of the country you are visiting, before you travel. ' +
   'Do not rely on this app alone.';
 export const FCDO_INDEX = 'https://www.gov.uk/foreign-travel-advice';
+export const METOFFICE_WARNINGS = 'https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings';
+export const fcdoAdviceUrl = (slug) => (slug ? `${FCDO_INDEX}/${slug}` : FCDO_INDEX);
 
 export async function loadRules(passport = 'GB') {
   try {

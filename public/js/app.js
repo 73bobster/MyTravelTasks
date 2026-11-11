@@ -124,6 +124,13 @@ function ownerList(trip) {
   return [...names];
 }
 
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<]+/g, (u) => {
+    const m = u.match(/[.,;:)]+$/); const tail = m ? m[0] : ''; const url = tail ? u.slice(0, -tail.length) : u;
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
+  });
+}
+
 function taskRow(trip, task, today) {
   const all = trip.tasks;
   const done = task.status === 'done';
@@ -147,7 +154,8 @@ function taskRow(trip, task, today) {
       </div>
       ${open ? `
       <div class="task-detail">
-        ${task.hint ? `<p class="hint">${esc(task.hint)}</p>` : ''}
+        ${task.hint ? `<p class="hint">${linkify(task.hint)}</p>` : ''}
+        ${task.key === 'entry_rules' ? viewEntryCard(trip) : ''}
         <div class="two">
           <label class="field">Who
             <select data-field="owner" data-id="${esc(task.id)}">${owners.map((o) => `<option ${o === task.owner ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
@@ -167,6 +175,14 @@ function taskRow(trip, task, today) {
 
 const tripEntry = (trip) => entryFor(normaliseTrip(trip), state.rules, todayISO());
 const fmtDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const sourceGroups = (e, r) => {
+  const uk = r.sources.filter((x) => x.kind !== 'destination');
+  const dest = r.sources.filter((x) => x.kind === 'destination');
+  return `<h4 class="small-h">Your passport's government: UK government (UK passport)</h4>${linkList(uk)}
+    <h4 class="small-h">The country you are visiting: ${esc(r.name)}${r.group ? ' and the EU' : ''}</h4>
+    ${dest.length ? linkList(dest) : `<p class="small muted">We haven't added an official ${esc(r.name)} government page for this yet. Search for ${esc(r.name)}'s official immigration or foreign ministry site and compare it with the UK page.</p>`}
+    ${e.hasNonGB ? '<h4 class="small-h">Travellers with another passport</h4><p class="small muted">Use your own government\'s foreign travel advice for ' + esc(r.name) + ', as well as the destination pages above.</p>' : ''}`;
+};
 const linkList = (sources) => `<ul class="source-list">${sources.map((x) =>
   `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}</a></li>`).join('')}</ul>`;
 
@@ -175,11 +191,12 @@ function viewEntryCard(trip) {
   if (!e.applicable) return '';
   const checkNote = `<p class="check-note"><strong>Please check this yourself.</strong> ${esc(DISCLAIMER)}</p>`;
   if (!e.covered) {
-    return `<section class="card entry" aria-label="Entry rules">
+    return `<section class="entry" aria-label="Entry rules">
       <h2>Entry rules for ${esc(e.country)}</h2>
       <p><span class="conf conf-none">Not covered yet</span></p>
       <p class="small">We don't have reviewed rules for ${esc(e.country)} yet. Start with the UK government's travel advice for the country, and read its "Entry requirements" section.</p>
-      ${linkList([{ label: 'GOV.UK: Foreign travel advice (find your destination)', url: FCDO_INDEX }])}
+      <h4 class="small-h">Your passport's government</h4>${linkList([{ label: 'GOV.UK: Foreign travel advice for UK passport holders (find your destination)', url: FCDO_INDEX }])}
+      <h4 class="small-h">The country you are visiting</h4><p class="small muted">Search for ${esc(e.country)}'s official immigration or foreign ministry site and compare it with the UK page.</p>
       ${checkNote}</section>`;
   }
   const r = e.rule, st = e.status;
@@ -196,7 +213,7 @@ function viewEntryCard(trip) {
       : 'add a passport expiry date when editing the trip to check this';
     return `<li class="pp-${p.status}">${esc(t.name || 'Traveller')}: ${esc(msg)}</li>`;
   }).join('');
-  return `<section class="card entry" aria-label="Entry rules">
+  return `<section class="entry" aria-label="Entry rules">
     <h2>Entry rules for ${esc(r.name)} <span class="small muted">UK passport</span></h2>
     <p class="conf-row"><span class="conf conf-${st.level}">${esc(st.label)}</span>
       <span class="small">Checked ${esc(fmtDate(r.checked))}${r.fcdoUpdated ? ` · GOV.UK page updated ${esc(fmtDate(r.fcdoUpdated))}` : ''}</span></p>
@@ -208,7 +225,7 @@ function viewEntryCard(trip) {
     ${e.carry.length ? `<details><summary>What you may be asked for at the border (${e.carry.length})</summary><ul>${e.carry.map((c) => `<li>${esc(c.text)}</li>`).join('')}</ul>${r.hostAdvice.map((h) => `<p class="small muted">${esc(h)}</p>`).join('')}</details>` : ''}
     ${r.other.length || r.notices.length ? `<details><summary>Other things to know (${r.other.length + r.notices.length})</summary><ul>${[...r.notices.map((n) => n.text), ...r.other].map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
     <h3 class="small-h">Official sources: check these yourself</h3>
-    ${linkList(r.sources)}
+    ${sourceGroups(e, r)}
     ${checkNote}
   </section>`;
 }
@@ -244,8 +261,6 @@ function viewTrip(id) {
           ${sum.done} of ${sum.total} done${sum.overdue ? ` · ${plural(sum.overdue, 'task')} overdue` : ''}</div>
       </div>
     </section>
-
-    ${viewEntryCard(trip)}
 
     ${blockers.length ? `
     <section class="card blockers" aria-label="Key dependencies">

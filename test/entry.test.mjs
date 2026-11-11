@@ -82,3 +82,10 @@ test('without entry data, behaviour is unchanged', () => {
   const keys = generateTasks(trip(), TODAY).map((x) => x.key);
   assert.ok(keys.includes('entry_rules') && !keys.includes('carry_invite'));
 });
+test('warnings tasks exist for abroad and UK trips, with official links', () => {
+  const t = trip(); const a = generateTasks(t, TODAY, entryFor(t, rules, TODAY));
+  assert.match(a.find((x) => x.key === 'travel_alerts').hint, /foreign-travel-advice\/spain/);
+  assert.ok(a.find((x) => x.key === 'travel_alerts_final').dependsOn.includes('travel_alerts'));
+  const uk = generateTasks(normaliseTrip({ ...t, scope: 'uk', country: '' }), TODAY);
+  assert.match(uk.find((x) => x.key === 'travel_alerts').hint, /metoffice/);
+});
