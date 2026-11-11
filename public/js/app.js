@@ -3,7 +3,7 @@ import {
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
 import {
-  KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent,
+  KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent, docBlob,
 } from './docs.js';
 import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
@@ -272,14 +272,15 @@ function docForm(level, tripId = '') {
     ${level === 'person' ? `<div class="grid">
       <label class="field">Valid from<input type="date" name="validFrom"><span class="help">Optional. Lets us check it covers a trip.</span></label>
       <label class="field">Valid to<input type="date" name="expires"></label></div>` : ''}
-    <label class="field">Photo or PDF<input type="file" name="file" accept="image/*,application/pdf"><span class="help">Take a photo or choose a file, up to 15 MB.</span></label>
+    <label class="field">Photo or PDF<input type="file" name="file" accept="image/*,application/pdf"><span class="help">Take a photo or choose a file, up to 15 MB. Then tap Save.</span></label>
+    <p class="small" data-doc-status role="status" aria-live="polite"></p>
     <p class="warn small"><strong>Saved on this device only.</strong> ${esc(NOTE_LOSS)}</p>
     <div><button class="btn btn-primary btn-small" type="submit">Save on this device</button></div>
   </form>`;
 }
 
 function viewTripDocs(trip) {
-  const { trip: tdocs, people } = docsForTrip(state.docs, docOwner(), trip);
+  const { trip: tdocs, people, others } = docsForTrip(state.docs, docOwner(), trip);
   const noIns = missingInsurance(state.docs, docOwner(), trip);
   const warns = people.filter((d) => d.kind === 'insurance').map((d) => ({ d, c: coverCheck(d, trip) })).filter((x) => x.c === 'outside');
   return `<section class="card docs" aria-label="Documents">
@@ -291,6 +292,7 @@ function viewTripDocs(trip) {
     ${warns.map(({ d }) => `<p class="warn small"><strong>${esc(d.person)}'s ${esc(d.label)} does not cover the whole trip</strong> (${esc(shortDate(trip.startDate))} to ${esc(shortDate(trip.endDate))}). Check its dates.</p>`).join('')}
     ${people.length ? `<h3 class="small-h">Reusable, from My documents</h3>${docList(people, { person: true })}` : ''}
     ${tdocs.length ? `<h3 class="small-h">For this trip</h3>${docList(tdocs)}` : ''}
+    ${others.length ? `<details><summary>Saved for other people (${others.length})</summary><p class="small muted">These are in My documents under a name that isn't on this trip.</p>${docList(others, { person: true })}</details>` : ''}
     <details><summary>Add a ticket, boarding pass or booking</summary>${docForm('trip', trip.id)}</details>
   </section>`;
 }
@@ -316,7 +318,12 @@ async function saveDoc(form) {
   const fd = new FormData(form);
   const level = form.dataset.level;
   const person = String(fd.get('person') || '').trim();
-  if (level === 'person' && !person) { toast('Say whose document it is.'); return; }
+  const status = form.querySelector('[data-doc-status]');
+  const say = (msg) => { if (status) status.textContent = msg; toast(msg); };
+  if (level === 'person' && !person) { say('Say whose document it is.'); return; }
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Saving…';
   try {
     await addDoc({
       owner: docOwner(), level, person, tripId: form.dataset.trip, kind: fd.get('kind'), label: fd.get('label'),
@@ -325,13 +332,16 @@ async function saveDoc(form) {
     await refreshDocs();
     toast('Saved on this device');
     render();
-  } catch (e) { toast(e.message || 'Could not save that file.'); }
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    say(e.message || 'Could not save that file.');
+  }
 }
 
 function openDoc(id) {
   const d = state.docs.find((x) => x.id === id);
   if (!d || typeof URL.createObjectURL !== 'function') return;
-  const url = URL.createObjectURL(d.blob);
+  const url = URL.createObjectURL(docBlob(d));
   window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
@@ -952,6 +962,12 @@ function onInput(e) {
 
 function onChange(e) {
   const el = e.target;
+  if (el.matches('input[type="file"][name="file"]')) {
+    const f = el.files && el.files[0];
+    const status = el.closest('form')?.querySelector('[data-doc-status]');
+    if (status) status.textContent = f ? `Ready: ${f.name || 'photo'} (${sizeLabel(f.size)}). Now tap Save.` : '';
+    return;
+  }
   // task detail fields
   if (el.matches('[data-field]')) {
     const { field, id } = el.dataset;
