@@ -499,6 +499,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Cyprus Ministry of Foreign Affairs: visa information",
+     "url": "https://mfa.gov.cy/visa-information.html",
+     "kind": "destination"
     }
    ]
   },
@@ -552,6 +557,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Irish Immigration Service: Common Travel Area (coming to visit Ireland)",
+     "url": "https://www.irishimmigration.ie/coming-to-visit-ireland/common-travel-area/",
+     "kind": "destination"
     }
    ]
   },
@@ -789,6 +799,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Mexican Consulate in the UK: tourist visa information",
+     "url": "https://consulmex.sre.gob.mx/reinounido/index.php/es/contenido/92-tourist-visa",
+     "kind": "destination"
     }
    ]
   },
@@ -847,6 +862,16 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Turkish Ministry of Foreign Affairs: visa information for foreigners",
+     "url": "https://www.mfa.gov.tr/visa-information-for-foreigners.en.mfa",
+     "kind": "destination"
+    },
+    {
+     "label": "Republic of Turkey official e-Visa site",
+     "url": "https://www.evisa.gov.tr/en/tour/",
+     "kind": "destination"
     }
    ]
   },
@@ -913,6 +938,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "UAE Federal Authority for Identity, Citizenship, Customs & Port Security (ICP)",
+     "url": "https://icp.gov.ae/en/home",
+     "kind": "destination"
     }
    ]
   },
@@ -1033,6 +1063,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Moroccan Ministry of Foreign Affairs (embassy site): visa requirements",
+     "url": "https://us.diplomatie.ma/en/visa-requirements",
+     "kind": "destination"
     }
    ]
   },
@@ -1170,6 +1205,11 @@
      "label": "TravelHealthPro (NHS-funded health advice for travellers)",
      "url": "https://travelhealthpro.org.uk/",
      "kind": "gov-uk"
+    },
+    {
+     "label": "Japan Ministry of Foreign Affairs: visa information",
+     "url": "https://www.mofa.go.jp/j_info/visit/visa/index.html",
+     "kind": "destination"
     }
    ]
   },

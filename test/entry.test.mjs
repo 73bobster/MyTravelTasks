@@ -89,3 +89,9 @@ test('warnings tasks exist for abroad and UK trips, with official links', () => 
   const uk = generateTasks(normaliseTrip({ ...t, scope: 'uk', country: '' }), TODAY);
   assert.match(uk.find((x) => x.key === 'travel_alerts').hint, /metoffice/);
 });
+test('destination government links are https and marked destination', () => {
+  for (const k of ['spain', 'cyprus', 'ireland', 'turkey', 'japan', 'usa']) {
+    const r = findRule(rules, k.replace('usa', 'USA'));
+    assert.ok(r.sources.some((x) => x.kind === 'destination' && x.url.startsWith('https://')), k);
+  }
+});
