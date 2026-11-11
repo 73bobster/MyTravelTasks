@@ -115,19 +115,15 @@ function viewHome() {
     <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
     ${banner}
     ${rows.map(({ t, s }) => `
-      <a class="card trip-card" href="#/trip/${esc(t.id)}">
-        ${(b => `<div class="trip-card-top">
-          <div class="days-circle tone-${b.tone}" role="img" aria-label="${esc(s.countdown.label)}"><span class="dc-big">${esc(b.big)}</span><span class="dc-unit">${esc(b.unit)}</span></div>
-          <div class="trip-card-main">
-            <div class="row between"><h2>${esc(t.name)}</h2>${overallPill(s)}</div>
-            <div class="meta">${esc(where(t))} · ${esc(tripDates(t))}</div>
-            <div class="row between small">
-              <strong>${esc(s.countdown.label)}</strong>
-              <span class="muted">${s.done} of ${s.total} done</span>
-            </div>
-          </div>
+      <a class="card trip-card on-dark" href="#/trip/${esc(t.id)}">
+        ${(b => `<div class="tc-top">
+          <div class="tc-count" aria-label="${esc(s.countdown.label)}"><span class="tc-big">${esc(b.big)}</span><span class="tc-unit">${esc(b.unit)}</span></div>
+          ${overallPill(s)}
         </div>`)(countdownBadge(s.countdown))}
+        <h2>${esc(t.name)}</h2>
+        <div class="meta">${esc(where(t))} · ${esc(tripDates(t))}</div>
         <progress max="100" value="${s.pct}" aria-label="${s.pct}% of tasks done"></progress>
+        <div class="tc-done">${s.done} of ${s.total} done</div>
       </a>`).join('')}
   </div>`;
 }
