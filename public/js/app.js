@@ -693,6 +693,18 @@ function viewAccount() {
 }
 
 // ---------- render ----------
+// True when a form on screen holds something the person typed or picked. Background refreshes must not wipe it:
+// coming back from the camera or file picker fires 'visibilitychange', which used to re-draw the page and blank the form.
+function hasUnsavedInput() {
+  for (const f of document.querySelectorAll('form[data-form="doc"], form[data-form="add-task"], form[data-form="auth"], form[data-form="delete-account"]')) {
+    for (const el of f.querySelectorAll('input, textarea')) {
+      if (el.type === 'file' ? el.files && el.files.length : (el.type === 'checkbox' || el.type === 'radio') ? false : el.value && el.value !== el.defaultValue) return true;
+    }
+  }
+  return false;
+}
+export function safeRender() { if (!hasUnsavedInput()) render(); }
+
 export function render() {
   const el = $app();
   if (!el) return;
@@ -1018,8 +1030,8 @@ export async function boot() {
   const { user, offline } = await getSession();
   state.user = user;
   state.store = user ? new ApiStore() : new GuestStore();
-  loadAlerts().then((a) => { state.alerts = a; if (state.ready) render(); });
-  loadRules('GB').then((r) => { state.rules = r; if (state.ready) render(); });
+  loadAlerts().then((a) => { state.alerts = a; if (state.ready) safeRender(); });
+  loadRules('GB').then((r) => { state.rules = r; if (state.ready) safeRender(); });
   await refreshDocs();
   state.regular = await loadRegular(user);
   await loadTrips();
@@ -1032,9 +1044,9 @@ export async function boot() {
   root.addEventListener('change', onChange);
   root.addEventListener('submit', onSubmit);
   window.addEventListener('hashchange', render);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
-  window.addEventListener('beforeinstallprompt', (ev) => { ev.preventDefault(); state.installEvent = ev; render(); });
-  window.addEventListener('online', async () => { if (state.offline) { await loadTrips(); render(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) safeRender(); });
+  window.addEventListener('beforeinstallprompt', (ev) => { ev.preventDefault(); state.installEvent = ev; safeRender(); });
+  window.addEventListener('online', async () => { if (state.offline) { await loadTrips(); safeRender(); } });
 
   render();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});

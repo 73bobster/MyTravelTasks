@@ -134,3 +134,15 @@ test('UI: adding your own task asks whether to keep it for future trips', async 
   assert.ok(!state.trips[0].tasks.some((t) => t.key === 'deodorant'));
   assert.ok(state.regular.some((r) => r.suppress === 'deodorant' && r.types.includes('work')));
 });
+
+test('UI: coming back from the camera or file picker does not wipe a form being filled in', async () => {
+  window.location.hash = '#/docs'; await tick();
+  const label = $('form[data-form="doc"] [name="label"]');
+  label.value = 'Half-filled policy';
+  document.dispatchEvent(new window.Event('visibilitychange')); await tick(50);
+  assert.equal($('form[data-form="doc"] [name="label"]').value, 'Half-filled policy', 'form kept');
+  assert.equal($('form[data-form="doc"] [name="label"]'), label, 'same element, not re-drawn');
+  label.value = '';
+  document.dispatchEvent(new window.Event('visibilitychange')); await tick(50);
+  assert.notEqual($('form[data-form="doc"] [name="label"]'), label, 'empty forms still refresh');
+});
