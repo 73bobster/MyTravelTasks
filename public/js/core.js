@@ -366,10 +366,10 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
   if (o.pets === 'sitter') add('pet_care', "Arrange pet care while you're away", 'Prepare', -14);
   if (o.pets === 'travelling' && modes.includes('train')) {
     add('dogs_on_train', 'Check the rules for taking your dog on the train', 'Prepare', -14, {
-      hint: 'Dogs travel free (up to 2 per passenger) but must be on a lead or in a carrier (max 85 x 60 x 60cm) for the whole journey, including the station. They are not allowed on seats or in restaurant carriages, and a dog causing a nuisance can be asked to leave. Assistance dogs travel free. '
-        + 'Extra pets may be charged up to half an adult fare (capped at 5 pounds single, 10 return). Sleepers differ: Night Riviera dogs travel in a carrier in the guard\'s van, Caledonian Sleeper allows dogs in the cabin with a 30 pound cleaning charge. '
+      hint: 'Up to 2 animals travel free. Dogs must be on a lead or in a carrier at stations and on the train; carry them on escalators. Carriers must be rigid, closed and big enough to stand and lie down in. No animals on seats, and staff can remove one that causes a nuisance. '
+        + 'Assistance dogs travel free. Charges for extra animals and sleeper cleaning vary by operator (for example Caledonian Sleeper: 30 pounds cleaning). '
         + (abroad ? 'Eurostar only takes registered guide and assistance dogs. ' : '')
-        + 'Rules vary by train operator, so confirm with yours. Summary of Trainline\'s guide: https://www.thetrainline.com/trains/great-britain/dogs-on-trains',
+        + 'Official: https://www.nationalrail.co.uk/on-the-train/train-travel-with-pets/ Also check your train company. More detail: https://www.thetrainline.com/trains/great-britain/dogs-on-trains',
     });
   }
   if (o.pets === 'travelling') add('pet_docs', 'Sort pet travel documents and pet-friendly stays', 'Prepare', -45, { isKey: true });
