@@ -2,7 +2,7 @@ import {
   TRIP_TYPES, TRANSPORT, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
-import { loadRules, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
+import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
   GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
 } from './store.js';
@@ -17,7 +17,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null,
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null,
 };
 
 const $app = () => document.getElementById('app');
@@ -173,7 +173,7 @@ function taskRow(trip, task, today) {
   </li>`;
 }
 
-const tripEntry = (trip) => entryFor(normaliseTrip(trip), state.rules, todayISO());
+const tripEntry = (trip) => entryFor(normaliseTrip(trip), state.rules, todayISO(), state.alerts);
 const fmtDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const sourceGroups = (e, r) => {
   const uk = r.sources.filter((x) => x.kind !== 'destination');
@@ -218,7 +218,7 @@ function viewEntryCard(trip) {
     <p class="conf-row"><span class="conf conf-${st.level}">${esc(st.label)}</span>
       <span class="small">Checked ${esc(fmtDate(r.checked))}${r.fcdoUpdated ? ` · GOV.UK page updated ${esc(fmtDate(r.fcdoUpdated))}` : ''}</span></p>
     <p class="small">${esc(st.means)}${r.confidence?.why ? ` ${esc(r.confidence.why)}` : ''}</p>
-    ${st.stale ? '<p class="warn small"><strong>This is more than 90 days old.</strong> Check the official pages below.</p>' : ''}
+    ${st.level === 'changed' ? `<p class="warn small"><strong>GOV.UK updated this advice on ${esc(fmtDate(st.changedOn))}, after we checked it.</strong>${st.change ? ` Its note says: ${esc(st.change)}` : ''} Read the official page below before relying on this summary.</p>` : st.stale ? '<p class="warn small"><strong>This is more than 90 days old.</strong> Check the official pages below.</p>' : ''}
     ${e.hasNonGB ? '<p class="warn small">Rules shown are for UK passports only. Check other travellers\' passports separately.</p>' : ''}
     <dl class="rules">${lines}${auth}${biz}</dl>
     ${pass ? `<ul class="pp-list">${pass}</ul>` : ''}
@@ -764,6 +764,7 @@ export async function boot() {
   const { user, offline } = await getSession();
   state.user = user;
   state.store = user ? new ApiStore() : new GuestStore();
+  loadAlerts().then((a) => { state.alerts = a; if (state.ready) render(); });
   loadRules('GB').then((r) => { state.rules = r; if (state.ready) render(); });
   await loadTrips();
   state.offline = user ? offline || state.offline : false; // guests work fully offline, so no warning for them

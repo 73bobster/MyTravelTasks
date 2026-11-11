@@ -7,6 +7,7 @@ export const CONFIDENCE = {
   high: { label: 'High confidence', means: 'Every core fact (visa, length of stay, passport) is stated plainly on the UK government page, and nothing looks unsettled.' },
   medium: { label: 'Medium confidence', means: 'The core facts are stated, but something is missing, changing or unclear. Check the linked pages for the gaps.' },
   low: { label: 'Low confidence', means: 'A key fact is not clear from the official page. Treat this as a prompt to check, not an answer.' },
+  changed: { label: 'Page changed since we checked', means: 'The UK government has updated this country\'s travel advice since we last reviewed it. Read the linked page: what is shown here may be out of date.' },
   stale: { label: 'Needs re-checking', means: 'We last checked this a while ago. Rules change, so check the official pages before you rely on it.' },
 };
 export const DISCLAIMER =
@@ -64,7 +65,15 @@ export function mergeRule(rules, key) {
   };
 }
 
-export function ruleStatus(rule, today) {
+export async function loadAlerts() {
+  try {
+    const res = await fetch('/data/rules/alerts.json');
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+
+export function ruleStatus(rule, today, alert = null) {
+  if (alert) return { level: 'changed', ageDays: 0, stale: true, changedOn: alert.updated, change: alert.change, ...CONFIDENCE.changed };
   const ageDays = isISODate(rule.checked) ? daysBetween(rule.checked, today) : 9999;
   const stale = ageDays > rule.reviewAfterDays;
   const level = stale ? 'stale' : rule.confidence?.level || 'low';
@@ -92,7 +101,7 @@ export function passportCheck(rule, trip, expiry) {
 }
 
 // Everything the app needs to know about entry rules for a trip.
-export function entryFor(trip, rules, today) {
+export function entryFor(trip, rules, today, alerts = null) {
   const country = trip.country || '';
   if (trip.scope !== 'abroad' || !country) return { applicable: false };
   const rule = findRule(rules, country);
@@ -107,7 +116,7 @@ export function entryFor(trip, rules, today) {
   const sources = [...rule.sources, ...extra.filter((s) => !seen.has(s.url))];
   return {
     applicable: true, covered: true, country, work,
-    rule: { ...rule, sources }, status: ruleStatus(rule, today), travellers,
+    rule: { ...rule, sources }, status: ruleStatus(rule, today, alerts?.changed?.[rule.key] || null), travellers,
     carry: rule.carry.filter((c) => work || !c.business),
     hasNonGB: travellers.some((t) => !t.gb),
   };

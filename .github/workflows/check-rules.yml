@@ -1,0 +1,32 @@
+name: Check entry rules
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run checker
+        run: node scripts/check-rules.mjs | tee report.txt
+      - name: Commit alerts file
+        run: |
+          git config user.name "rules-checker"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/data/rules/alerts.json
+          git diff --cached --quiet || (git commit -m "Rules checker: update alerts" && git push)
+      - name: Open or update the review issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if grep -qE '^(CHANGED|BROKEN|ERROR)' report.txt; then
+            body="Weekly entry-rules check found items to review. For each CHANGED rule: read the GOV.UK page, update public/data/rules/gb.json, then set the rule's \"checked\" date to today to clear the alert.\n\n\`\`\`\n$(cat report.txt)\n\`\`\`"
+            n=$(gh issue list --label rules-check --state open --json number -q '.[0].number')
+            if [ -n "$n" ]; then gh issue comment "$n" --body "$(printf "$body")"; else gh label create rules-check --force >/dev/null; gh issue create --title "Entry rules need review" --label rules-check --body "$(printf "$body")"; fi
+          fi

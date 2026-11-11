@@ -95,3 +95,17 @@ test('destination government links are https and marked destination', () => {
     assert.ok(r.sources.some((x) => x.kind === 'destination' && x.url.startsWith('https://')), k);
   }
 });
+import { findChanged, classify } from '../scripts/check-rules.mjs';
+test('checker flags only pages updated after we checked; classifies link statuses', () => {
+  const live = { spain: { updated: '2026-11-14T09:00:00Z', change: 'New text' }, france: { updated: '2026-10-22T09:00:00Z' }, italy: { updated: '2026-11-11T08:00:00Z' } };
+  const ch = findChanged(rules, live);
+  assert.deepEqual(Object.keys(ch), ['spain']);          // italy updated on the checked date: not flagged
+  assert.equal(ch.spain.updated, '2026-11-14');
+  assert.equal(classify(404), 'broken'); assert.equal(classify(200), 'ok'); assert.equal(classify(403), 'unknown'); assert.equal(classify(0), 'unknown');
+});
+test('a changed alert overrides confidence in the status', () => {
+  const r = findRule(rules, 'Spain');
+  const s = ruleStatus(r, TODAY, { updated: '2026-11-14', change: 'x' });
+  assert.equal(s.level, 'changed'); assert.equal(s.stale, true);
+  assert.equal(entryFor(trip(), rules, TODAY, { changed: { spain: { updated: '2026-11-14', change: '' } } }).status.level, 'changed');
+});

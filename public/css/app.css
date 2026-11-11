@@ -181,7 +181,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--sky); borde
 .entry .conf-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: .2rem 0; }
 .conf { display: inline-block; border-radius: 999px; padding: .2rem .7rem; font-size: .78rem; font-weight: 700; white-space: nowrap; }
 .conf-high { background: var(--rag-green-bg); color: var(--rag-green); }
-.conf-medium, .conf-stale { background: var(--rag-amber-bg); color: var(--rag-amber); }
+.conf-medium, .conf-stale, .conf-changed { background: var(--rag-amber-bg); color: var(--rag-amber); }
 .conf-low { background: var(--rag-red-bg); color: var(--rag-red); }
 .conf-none { background: var(--mist); color: var(--slate); }
 .small-conf { margin-left: .3rem; font-size: .7rem; padding: .1rem .5rem; }
