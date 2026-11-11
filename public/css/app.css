@@ -198,3 +198,13 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--sky); borde
 .small-h { font-size: .9rem; margin: .8rem 0 .2rem; }
 .source-list { margin: .2rem 0; padding-left: 1.1rem; font-size: .9rem; }
 .check-note { margin: .8rem 0 0; padding: .7rem .9rem; border-radius: 10px; background: #F3F7FF; border: 1px solid #C9DAFF; font-size: .88rem; }
+
+/* ---------- documents ---------- */
+.docs h2 { margin-bottom: .3rem; }
+.doc-list { list-style: none; padding: 0; margin: .4rem 0; display: grid; gap: .5rem; }
+.doc-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: 10px; }
+.doc-main { display: grid; min-width: 0; }
+.doc-actions { display: flex; gap: .4rem; }
+.doc-form { margin-top: .6rem; }
+.docs details { margin-top: .6rem; }
+.docs summary { cursor: pointer; font-weight: 700; }

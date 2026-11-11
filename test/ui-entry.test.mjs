@@ -71,3 +71,25 @@ test('UI: entry rules card shows confidence, dates, official links and the check
   assert.equal($$('[style]').length, 0, 'no inline styles');
   console.log('ok  entry card');
 });
+
+import { addDoc, allDocs } from '../public/js/docs.js';
+test('UI: My documents screen and the trip Documents section', async () => {
+  const f = (n, t) => new window.File([new Uint8Array(500)], n, { type: t });
+  window.location.hash = '#/'; await tick();
+  assert.ok($('a[href="#/docs"]'), 'My documents link on home');
+  await addDoc({ owner: 'guest', level: 'person', person: 'Me', kind: 'insurance', label: 'Annual policy', validFrom: plus(-200), expires: plus(31) }, f('p.pdf', 'application/pdf'));
+  state.docs = await allDocs();
+  window.location.hash = '#/docs'; await tick();
+  assert.match(text(), /My documents/); assert.match(text(), /Annual policy/); assert.match(text(), /Saved on this device only, not uploaded/);
+  assert.ok($('form[data-form="doc"][data-level="person"] input[type="file"]'), 'add form');
+  const tripId = state.trips[0].id;
+  window.location.hash = `#/trip/${tripId}`; await tick();
+  assert.match(text(), /Reusable, from My documents/); assert.match(text(), /Annual policy/);
+  assert.match(text(), /does not cover the whole trip/, 'expiry before trip end is flagged');
+  await addDoc({ owner: 'guest', level: 'trip', tripId, kind: 'ticket', label: 'Outbound boarding pass' }, f('bp.png', 'image/png'));
+  state.docs = await allDocs(); window.dispatchEvent(new window.Event('hashchange')); await tick();
+  assert.match(text(), /For this trip/); assert.match(text(), /Outbound boarding pass/);
+  assert.ok($('details form[data-form="doc"][data-level="trip"]'), 'trip add form');
+  assert.equal($$('[style]').length, 0);
+  console.log('ok  documents');
+});

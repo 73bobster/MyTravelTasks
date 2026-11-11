@@ -102,7 +102,7 @@ npm test
 
 ## Roadmap
 
-1. **Entry rules by destination and passport**: what each traveller needs, and the tasks that follow. See [docs/requirements-entry-rules.md](docs/requirements-entry-rules.md).
+1. **Entry rules by destination and passport** (UK passports built; weekly checker): what each traveller needs, and the tasks that follow. See [docs/requirements-entry-rules.md](docs/requirements-entry-rules.md).
 2. **Documents**: upload passport, tickets and insurance (Neon storage or R2), with expiry reminders and an offline "needed today" pack.
 3. **Travel hub mode**: a "leave by" time and a step-by-step journey through the airport or station.
 4. **Live updates** (optional per trip): delays, gates and platforms.

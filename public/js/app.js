@@ -2,6 +2,9 @@ import {
   TRIP_TYPES, TRANSPORT, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
+import {
+  KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent,
+} from './docs.js';
 import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
   GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
@@ -17,7 +20,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null,
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [],
 };
 
 const $app = () => document.getElementById('app');
@@ -46,6 +49,7 @@ function route() {
   if (parts[0] === 'signin') return { name: 'auth', mode: 'login' };
   if (parts[0] === 'register') return { name: 'auth', mode: 'register' };
   if (parts[0] === 'account') return { name: 'account' };
+  if (parts[0] === 'docs') return { name: 'docs' };
   return { name: 'home' };
 }
 
@@ -100,7 +104,7 @@ function viewHome() {
   }
 
   return `<div class="stack">
-    <div class="row between"><h1>Your trips</h1><a class="btn btn-primary" href="#/new">Plan a trip</a></div>
+    <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
     ${banner}
     ${rows.map(({ t, s }) => `
       <a class="card trip-card" href="#/trip/${esc(t.id)}">
@@ -230,6 +234,102 @@ function viewEntryCard(trip) {
   </section>`;
 }
 
+// ---------- documents (kept on this device) ----------
+const docOwner = () => (state.user ? String(state.user.id ?? state.user.email ?? 'account') : 'guest');
+async function refreshDocs() { try { state.docs = await allDocs(); } catch { state.docs = []; } }
+const NOTE_PRIVATE = 'Saved on this device only, not uploaded. Please don\'t save passport or ID scans: officers need the real passport, and a lost phone would expose them.';
+
+function docList(docs, { person = false } = {}) {
+  if (!docs.length) return '';
+  return `<ul class="doc-list">${docs.map((d) => `<li>
+    <div class="doc-main"><strong>${esc(d.label)}</strong>
+      <span class="small muted">${esc(kindLabel(d.kind))}${person && d.person ? ` · ${esc(d.person)}` : ''} · ${esc(sizeLabel(d.size))}${d.expires ? ` · valid to ${esc(fmtDate(d.expires))}` : ''}</span></div>
+    <div class="doc-actions"><button type="button" class="btn btn-secondary btn-small" data-action="open-doc" data-id="${esc(d.id)}">Open</button>
+      <button type="button" class="btn btn-ghost btn-small" data-action="remove-doc" data-id="${esc(d.id)}" aria-label="Remove ${esc(d.label)}">Remove</button></div></li>`).join('')}</ul>`;
+}
+
+function peopleNames() {
+  const set = new Map();
+  const add = (n) => { const k = String(n || '').trim(); if (k) set.set(k.toLowerCase(), k); };
+  add(myName());
+  for (const t of state.trips) for (const x of t.travellers || []) add(x.name);
+  for (const d of state.docs) if (d.person) add(d.person);
+  return [...set.values()];
+}
+
+function docForm(level, tripId = '') {
+  const kinds = KINDS.filter((k) => k.level === level || k.level === 'both');
+  return `<form data-form="doc" data-level="${level}" data-trip="${esc(tripId)}" class="stack doc-form" novalidate>
+    ${level === 'person' ? `<label class="field">Whose is it?<input type="text" name="person" maxlength="40" list="people" value="${esc(myName())}" autocomplete="off">
+      <datalist id="people">${peopleNames().map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>` : ''}
+    <div class="grid">
+      <label class="field">What is it?<select name="kind">${kinds.map((k) => `<option value="${k.id}">${esc(k.label)}</option>`).join('')}</select></label>
+      <label class="field">Name it<input type="text" name="label" maxlength="80" placeholder="${level === 'person' ? 'e.g. Annual multi-trip policy' : 'e.g. Outbound boarding pass'}" autocomplete="off"></label>
+    </div>
+    ${level === 'person' ? `<div class="grid">
+      <label class="field">Valid from<input type="date" name="validFrom"><span class="help">Optional. Lets us check it covers a trip.</span></label>
+      <label class="field">Valid to<input type="date" name="expires"></label></div>` : ''}
+    <label class="field">Photo or PDF<input type="file" name="file" accept="image/*,application/pdf"><span class="help">Take a photo or choose a file, up to 15 MB.</span></label>
+    <div><button class="btn btn-primary btn-small" type="submit">Save on this device</button></div>
+  </form>`;
+}
+
+function viewTripDocs(trip) {
+  const { trip: tdocs, people } = docsForTrip(state.docs, docOwner(), trip);
+  const noIns = missingInsurance(state.docs, docOwner(), trip);
+  const warns = people.filter((d) => d.kind === 'insurance').map((d) => ({ d, c: coverCheck(d, trip) })).filter((x) => x.c === 'outside');
+  return `<section class="card docs" aria-label="Documents">
+    <h2>Documents</h2>
+    <p class="small muted">${esc(NOTE_PRIVATE)}</p>
+    ${persistent ? '' : '<p class="warn small">This browser is not keeping files between visits (private mode?), so they will be lost when you close it.</p>'}
+    ${noIns.length ? `<p class="notice small">No travel insurance saved for ${esc(noIns.join(', '))}. A policy saved once under <a href="#/docs">My documents</a> is used for every trip.</p>` : ''}
+    ${warns.map(({ d }) => `<p class="warn small"><strong>${esc(d.person)}'s ${esc(d.label)} does not cover the whole trip</strong> (${esc(shortDate(trip.startDate))} to ${esc(shortDate(trip.endDate))}). Check its dates.</p>`).join('')}
+    ${people.length ? `<h3 class="small-h">Reusable, from My documents</h3>${docList(people, { person: true })}` : ''}
+    ${tdocs.length ? `<h3 class="small-h">For this trip</h3>${docList(tdocs)}` : ''}
+    <details><summary>Add a ticket, boarding pass or booking</summary>${docForm('trip', trip.id)}</details>
+  </section>`;
+}
+
+function viewDocs() {
+  const mine = state.docs.filter((d) => d.owner === docOwner());
+  const people = mine.filter((d) => d.level === 'person');
+  const tripDocs = mine.filter((d) => d.level === 'trip');
+  const byPerson = [...new Set(people.map((d) => d.person || 'Unnamed'))];
+  return `<div class="stack">
+    <div><a href="#/" class="small">← All trips</a></div>
+    <h1>My documents</h1>
+    <p class="notice">${esc(NOTE_PRIVATE)} Save a document here once, such as annual travel insurance, and every trip with that person on it can use it. Tickets and bookings are added from the trip itself.</p>
+    ${persistent ? '' : '<p class="warn small">This browser is not keeping files between visits (private mode?), so they will be lost when you close it.</p>'}
+    ${byPerson.length ? byPerson.map((n) => `<section class="card"><h2>${esc(n)}</h2>${docList(people.filter((d) => (d.person || 'Unnamed') === n))}</section>`).join('') : '<div class="card empty"><p class="muted">Nothing saved yet.</p></div>'}
+    <section class="card"><h2>Add a document</h2>${docForm('person')}</section>
+    ${tripDocs.length ? `<section class="card"><h2>Trip documents</h2>${[...new Set(tripDocs.map((d) => d.tripId))].map((id) => `<h3 class="small-h">${esc(findTrip(id)?.name || 'Trip')}</h3>${docList(tripDocs.filter((d) => d.tripId === id))}`).join('')}</section>` : ''}
+  </div>`;
+}
+
+async function saveDoc(form) {
+  const fd = new FormData(form);
+  const level = form.dataset.level;
+  const person = String(fd.get('person') || '').trim();
+  if (level === 'person' && !person) { toast('Say whose document it is.'); return; }
+  try {
+    await addDoc({
+      owner: docOwner(), level, person, tripId: form.dataset.trip, kind: fd.get('kind'), label: fd.get('label'),
+      validFrom: fd.get('validFrom'), expires: fd.get('expires'),
+    }, fd.get('file'));
+    await refreshDocs();
+    toast('Saved on this device');
+    render();
+  } catch (e) { toast(e.message || 'Could not save that file.'); }
+}
+
+function openDoc(id) {
+  const d = state.docs.find((x) => x.id === id);
+  if (!d || typeof URL.createObjectURL !== 'function') return;
+  const url = URL.createObjectURL(d.blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+
 function viewTrip(id) {
   const trip = findTrip(id);
   if (!trip) return `<div class="card empty"><h2>We can't find that trip</h2><p class="muted">It may have been deleted, or it lives in a different account.</p><a class="btn btn-primary" href="#/">Back to your trips</a></div>`;
@@ -279,6 +379,8 @@ function viewTrip(id) {
       }).join('')}
       </ul>
     </section>` : ''}
+
+    ${viewTripDocs(trip)}
 
     <div class="row between">
       <div class="chips" role="group" aria-label="Filter by person">
@@ -521,6 +623,7 @@ export function render() {
   } else if (r.name === 'trip') { html = viewTrip(r.id); title = `${findTrip(r.id)?.name || 'Trip'} · My Travel Tasks`; }
   else if (r.name === 'auth') { html = viewAuth(r.mode); title = (r.mode === 'register' ? 'Create account' : 'Sign in') + ' · My Travel Tasks'; }
   else if (r.name === 'account') { html = viewAccount(); title = 'Account · My Travel Tasks'; }
+  else if (r.name === 'docs') { html = viewDocs(); title = 'My documents · My Travel Tasks'; }
   else html = viewHome();
 
   el.innerHTML = layout(html);
@@ -601,7 +704,14 @@ async function submitAuth(form) {
     state.store = new ApiStore();
     let note = mode === 'register' ? 'Account created' : 'Signed in';
     if (fd.get('bring') === 'on') {
-      try { await importGuestTrips(); note += ', and your guest trips are saved'; }
+      try {
+        const before = guestTrips();
+        const all = await importGuestTrips();
+        const map = {};
+        for (const g of before) { const m = all.find((t) => t.name === g.name && t.startDate === g.startDate); if (m) map[g.id] = m.id; }
+        await moveOwner('guest', docOwner(), map); await refreshDocs();
+        note += ', and your guest trips are saved';
+      }
       catch (e) { note += `, but your guest trips could not be moved (${e.message})`; }
     }
     await loadTrips();
@@ -626,7 +736,9 @@ async function deleteAccount(form) {
   const password = new FormData(form).get('password');
   state.authError = '';
   try {
+    const scope = docOwner();
     await api('/me', { method: 'DELETE', body: { password } });
+    await removeWhere((d) => d.owner === scope); await refreshDocs();
     forgetSession();
     state.user = null; state.store = new GuestStore();
     await loadTrips();
@@ -680,9 +792,13 @@ function onClick(e) {
         state.store.removeTask(r.id, id).then(() => { trip.tasks = trip.tasks.filter((t) => t.id !== id); render(); }).catch((err) => toast(err.message));
       }
       break;
+    case 'open-doc': openDoc(id); break;
+    case 'remove-doc':
+      if (confirm('Remove this document from this device?')) removeDoc(id).then(refreshDocs).then(render);
+      break;
     case 'delete-trip':
       if (confirm('Delete this trip and all its tasks? This cannot be undone.')) {
-        state.store.remove(id).then(() => { state.trips = state.trips.filter((t) => t.id !== id); location.hash = '#/'; render(); toast('Trip deleted'); }).catch((err) => toast(err.message));
+        state.store.remove(id).then(() => removeWhere((d) => d.tripId === id)).then(refreshDocs).then(() => { state.trips = state.trips.filter((t) => t.id !== id); location.hash = '#/'; render(); toast('Trip deleted'); }).catch((err) => toast(err.message));
       }
       break;
     case 'add-traveller':
@@ -755,6 +871,7 @@ function onSubmit(e) {
     case 'trip': submitTrip(); break;
     case 'auth': submitAuth(form); break;
     case 'add-task': addTask(form); break;
+    case 'doc': saveDoc(form); break;
     case 'delete-account': deleteAccount(form); break;
     default: break;
   }
@@ -767,6 +884,7 @@ export async function boot() {
   state.store = user ? new ApiStore() : new GuestStore();
   loadAlerts().then((a) => { state.alerts = a; if (state.ready) render(); });
   loadRules('GB').then((r) => { state.rules = r; if (state.ready) render(); });
+  await refreshDocs();
   await loadTrips();
   state.offline = user ? offline || state.offline : false; // guests work fully offline, so no warning for them
   state.ready = true;
