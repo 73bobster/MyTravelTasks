@@ -216,9 +216,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--sky); borde
 /* Home trip cards: countdown circle */
 .trip-card-top { display: flex; gap: .9rem; align-items: center; margin-bottom: .6rem; }
 .trip-card-main { flex: 1; min-width: 0; }
-.days-circle { flex: none; width: 4.6rem; height: 4.6rem; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--mist); color: var(--cobalt); border: 3px solid var(--cobalt); line-height: 1; text-align: center; }
-.days-circle .dc-big { font-size: 1.8rem; font-weight: 800; }
-.days-circle .dc-unit { font-size: .7rem; font-weight: 600; margin-top: .15rem; color: var(--slate); }
+.days-circle { flex: none; width: 3.6rem; height: 3.6rem; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--mist); color: var(--cobalt); border: 2.5px solid var(--cobalt); line-height: 1; text-align: center; }
+.days-circle .dc-big { font-size: 1.4rem; font-weight: 800; }
+.days-circle .dc-unit { font-size: .6rem; font-weight: 600; margin-top: .15rem; color: var(--slate); }
 .days-circle.tone-soon { border-color: var(--rag-amber); }
 .days-circle.tone-now { background: var(--cobalt); color: #fff; border-color: var(--cobalt); }
 .days-circle.tone-now .dc-unit { color: #fff; }
