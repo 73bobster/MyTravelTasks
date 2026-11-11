@@ -143,3 +143,15 @@ test('regular tasks: normalised, matched by trip type and scope, keyed so they s
   assert.deepEqual(k(trip({ type: 'holiday', scope: 'uk', country: '' })).slice(0, 1), ['Pack the guidebook']);
   assert.equal(generateTasks(trip(), TODAY, null, reg).find((x) => x.key === 'mine_a').category, 'My tasks');
 });
+test('removed tasks: this trip only, one trip type, or all trips; person keys match by base', () => {
+  const keys = (t, reg = []) => generateTasks(t, TODAY, null, reg).map((x) => x.key);
+  assert.ok(keys(trip()).includes('deodorant'));
+  assert.ok(!keys(trip({ options: { dismissed: ['deodorant'] } })).includes('deodorant'));        // this trip only
+  const work = [{ id: 's1', title: 'Pack deodorant', suppress: 'deodorant', types: ['work'] }];
+  assert.ok(!keys(trip(), work).includes('deodorant'));                                           // all work trips
+  assert.ok(keys(trip({ type: 'holiday' }), work).includes('deodorant'));                         // other types keep it
+  const all = [{ id: 's2', title: 'x', suppress: 'passport', types: [] }];
+  assert.ok(!keys(trip(), all).some((k) => k.startsWith('passport@')));                           // per-person key, any name
+  assert.deepEqual(normaliseRegular(work)[0].suppress, 'deodorant');
+  assert.deepEqual(normaliseTrip({ options: { dismissed: ['a', 'a', ' b '] } }).options.dismissed, ['a', 'b']);
+});

@@ -1,5 +1,5 @@
 import {
-  TRIP_TYPES, TRANSPORT, normaliseRegular, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
+  TRIP_TYPES, TRANSPORT, normaliseRegular, suppressKey, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
   taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
 } from './core.js';
 import {
@@ -21,7 +21,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [], repeatPrompt: null,
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [], repeatPrompt: null, deletePrompt: null,
 };
 
 const $app = () => document.getElementById('app');
@@ -51,7 +51,6 @@ function route() {
   if (parts[0] === 'register') return { name: 'auth', mode: 'register' };
   if (parts[0] === 'account') return { name: 'account' };
   if (parts[0] === 'docs') return { name: 'docs' };
-  if (parts[0] === 'regular') return { name: 'regular' };
   return { name: 'home' };
 }
 
@@ -173,7 +172,7 @@ function taskRow(trip, task, today) {
         <label class="field">Notes
           <textarea data-field="notes" data-id="${esc(task.id)}" placeholder="Booking reference, links, who to call…">${esc(task.notes)}</textarea>
         </label>
-        <div><button type="button" class="btn btn-ghost btn-small" data-action="delete-task" data-id="${esc(task.id)}">Remove task</button></div>
+        ${state.deletePrompt && state.deletePrompt.taskId === task.id ? deletePromptView(trip) : `<div><button type="button" class="btn btn-ghost btn-small" data-action="delete-task" data-id="${esc(task.id)}">Remove task</button></div>`}
       </div>` : ''}
     </div>
   </li>`;
@@ -337,6 +336,51 @@ function openDoc(id) {
   setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
 
+function deletePromptView(trip) {
+  const typeLabel = (TRIP_TYPES.find((t) => t.id === trip.type)?.label || 'trip').toLowerCase();
+  return `<div class="card tint delete-prompt" role="alertdialog" aria-label="Remove task">
+    <p><strong>Remove this task from:</strong></p>
+    <div class="actions">
+      <button type="button" class="btn btn-primary btn-small" data-action="del-this">Just this trip</button>
+      <button type="button" class="btn btn-secondary btn-small" data-action="del-type">All ${esc(typeLabel)} trips going forward</button>
+      <button type="button" class="btn btn-secondary btn-small" data-action="del-all">All trips going forward</button>
+      <button type="button" class="btn btn-ghost btn-small" data-action="del-cancel">Keep it</button>
+    </div>
+    <p class="small muted">Going forward means trips you plan or edit from now on. Trips already saved change when you edit them.</p>
+  </div>`;
+}
+
+async function chooseDelete(scope) {
+  const p = state.deletePrompt;
+  state.deletePrompt = null;
+  if (!p || scope === 'cancel') { render(); return; }
+  try {
+    const trip = findTrip(p.tripId);
+    const ids = TRIP_TYPES.map((t) => t.id);
+    let list = state.regular.slice();
+    let dismissed = [...(trip.options?.dismissed || [])];
+    if (scope === 'this') dismissed.push(p.key);
+    else if (p.key.startsWith('mine_')) {
+      const id = p.key.slice(5);
+      list = list.flatMap((r) => {
+        if (r.id !== id) return [r];
+        if (scope === 'all') return [];
+        const types = r.types.length ? r.types.filter((t) => t !== trip.type) : ids.filter((t) => t !== trip.type);
+        return types.length ? [{ ...r, types }] : [];
+      });
+    } else {
+      list.push({ title: p.title, suppress: suppressKey(p.key), types: scope === 'type' ? [trip.type] : [], when: 'any', days: 0 });
+    }
+    if (list.length !== state.regular.length || JSON.stringify(list) !== JSON.stringify(state.regular)) await saveRegularList(list);
+    await state.store.removeTask(p.tripId, p.taskId);
+    trip.tasks = trip.tasks.filter((t) => t.id !== p.taskId);
+    trip.options = { ...trip.options, dismissed };
+    await regenerateTrip(p.tripId);
+    render();
+    toast(scope === 'this' ? 'Task removed' : 'Removed, and won\'t be added to future trips');
+  } catch (e) { render(); toast(e.message); }
+}
+
 function viewRepeatPrompt(trip) {
   const p = state.repeatPrompt;
   if (!p || p.tripId !== trip.id) return '';
@@ -349,7 +393,6 @@ function viewRepeatPrompt(trip) {
       <button type="button" class="btn btn-secondary btn-small" data-action="repeat-all">Every trip I plan</button>
       <button type="button" class="btn btn-ghost btn-small" data-action="repeat-no">Just this trip</button>
     </div>
-    <p class="small muted">You can change this later under <a href="#/regular">Regular tasks</a>.</p>
   </section>`;
 }
 
@@ -444,7 +487,6 @@ function viewTrip(id) {
         </div>
         <div><button class="btn btn-primary btn-small" type="submit">Add task</button></div>
       </form>
-      <p class="small muted"><a href="#/regular">Regular tasks</a>: tasks you've chosen to add to future trips.</p>
     </details>
 
     <div class="actions">
@@ -647,6 +689,7 @@ export function render() {
   const r = route();
   if (r.name !== 'new' && r.name !== 'edit') { state.draft = null; state.draftFor = null; state.formErrors = []; }
   if (r.name !== 'auth' && r.name !== 'account') state.authError = '';
+  if (state.deletePrompt && !(r.name === 'trip' && r.id === state.deletePrompt.tripId)) state.deletePrompt = null;
   if (state.repeatPrompt && !(r.name === 'trip' && r.id === state.repeatPrompt.tripId)) state.repeatPrompt = null;
 
   let html;
@@ -665,7 +708,6 @@ export function render() {
   } else if (r.name === 'trip') { html = viewTrip(r.id); title = `${findTrip(r.id)?.name || 'Trip'} · My Travel Tasks`; }
   else if (r.name === 'auth') { html = viewAuth(r.mode); title = (r.mode === 'register' ? 'Create account' : 'Sign in') + ' · My Travel Tasks'; }
   else if (r.name === 'account') { html = viewAccount(); title = 'Account · My Travel Tasks'; }
-  else if (r.name === 'regular') { html = viewRegular(); title = 'Regular tasks · My Travel Tasks'; }
   else if (r.name === 'docs') { html = viewDocs(); title = 'My documents · My Travel Tasks'; }
   else html = viewHome();
 
@@ -841,40 +883,6 @@ async function regenerateTrip(tripId) {
   state.trips = state.trips.map((x) => (x.id === saved.id ? saved : x));
 }
 
-function viewRegular() {
-  const label = (r) => (r.types.length ? r.types.map((id) => TRIP_TYPES.find((t) => t.id === id)?.label || id).join(', ') : 'Every trip');
-  const when = { any: 'UK or abroad', uk: 'UK trips', abroad: 'Trips abroad' };
-  return `<div class="stack">
-    <div><a href="#/" class="small">← All trips</a></div>
-    <h1>Regular tasks</h1>
-    <p class="notice">Tasks that are yours, such as "take my football scarf". They are added to every trip of the kind you choose, when you plan or edit it. They are private to you and don't change anyone else's checklist. ${state.user ? 'They are saved to your account.' : 'They are saved on this device. Create an account to keep them across devices.'}</p>
-    ${state.regular.length ? `<ul class="doc-list">${state.regular.map((r) => `<li>
-      <div class="doc-main"><strong>${esc(r.title)}</strong><span class="small muted">${esc(label(r))} · ${esc(when[r.when])} · ${r.days === 0 ? 'on the day' : `${plural(r.days, 'day')} before`}</span></div>
-      <div class="doc-actions"><button type="button" class="btn btn-ghost btn-small" data-action="remove-regular" data-id="${esc(r.id)}" aria-label="Remove ${esc(r.title)}">Remove</button></div></li>`).join('')}</ul>` : '<div class="card empty"><p class="muted">No regular tasks yet.</p></div>'}
-    <section class="card"><h2>Add a regular task</h2>
-      <form data-form="regular" class="stack" novalidate>
-        <label class="field">Task<input type="text" name="title" maxlength="120" placeholder="e.g. Take my football scarf" autocomplete="off"></label>
-        <div class="grid">
-          <label class="field">Add it to<select name="type"><option value="">Every trip</option>${TRIP_TYPES.map((t) => `<option value="${t.id}">${esc(t.label)}</option>`).join('')}</select></label>
-          <label class="field">Where<select name="when"><option value="any">UK or abroad</option><option value="uk">UK trips only</option><option value="abroad">Trips abroad only</option></select></label>
-        </div>
-        <label class="field">Due<select name="days"><option value="0">On the day</option><option value="1" selected>1 day before</option><option value="2">2 days before</option><option value="7">A week before</option><option value="14">2 weeks before</option></select></label>
-        <div><button class="btn btn-primary btn-small" type="submit">Add regular task</button></div>
-      </form></section>
-    <p class="small muted">New regular tasks reach a trip you have already planned when you open it, choose "Edit trip details" and save.</p>
-  </div>`;
-}
-
-async function addRegular(form) {
-  const fd = new FormData(form);
-  const title = String(fd.get('title') || '').trim();
-  if (!title) { toast('Type the task first.'); return; }
-  try {
-    await saveRegularList([...state.regular, { title, types: fd.get('type') ? [fd.get('type')] : [], when: fd.get('when'), days: Number(fd.get('days')) }]);
-    render(); toast('Added');
-  } catch (e) { toast(e.message); }
-}
-
 // ---------- events ----------
 const REDRAW_PATHS = new Set(['scope', 'who', 'options.carHire', 'type']);
 
@@ -888,18 +896,22 @@ function onClick(e) {
     case 'expand': state.open.has(id) ? state.open.delete(id) : state.open.add(id); render(); break;
     case 'owner': state.owner = value; render(); break;
     case 'view': state.view = value; render(); break;
-    case 'delete-task':
+    case 'del-this': chooseDelete('this'); break;
+    case 'del-type': chooseDelete('type'); break;
+    case 'del-all': chooseDelete('all'); break;
+    case 'del-cancel': chooseDelete('cancel'); break;
+    case 'delete-task': {
+      const task = findTrip(r.id)?.tasks.find((t) => t.id === id);
+      if (task && task.key) { state.deletePrompt = { tripId: r.id, taskId: id, key: task.key, title: task.title }; render(); break; }
       if (confirm('Remove this task?')) {
         const trip = findTrip(r.id);
         state.store.removeTask(r.id, id).then(() => { trip.tasks = trip.tasks.filter((t) => t.id !== id); render(); }).catch((err) => toast(err.message));
       }
       break;
+    }
     case 'repeat-type': chooseRepeat('type'); break;
     case 'repeat-all': chooseRepeat('all'); break;
     case 'repeat-no': chooseRepeat('no'); break;
-    case 'remove-regular':
-      saveRegularList(state.regular.filter((x) => x.id !== id)).then(render).catch((err) => toast(err.message));
-      break;
     case 'open-doc': openDoc(id); break;
     case 'remove-doc':
       if (confirm('Remove this document from this device?')) removeDoc(id).then(refreshDocs).then(render);
@@ -980,7 +992,6 @@ function onSubmit(e) {
     case 'auth': submitAuth(form); break;
     case 'add-task': addTask(form); break;
     case 'doc': saveDoc(form); break;
-    case 'regular': addRegular(form); break;
     case 'delete-account': deleteAccount(form); break;
     default: break;
   }

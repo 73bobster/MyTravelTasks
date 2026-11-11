@@ -112,6 +112,25 @@ test('UI: adding your own task asks whether to keep it for future trips', async 
   assert.equal(state.regular.length, 1); assert.deepEqual(state.regular[0].types, ['work']);
   assert.equal(state.trips[0].tasks.filter((t) => t.title === 'Take my football scarf').length, 1, 'no duplicate on this trip');
   assert.ok(state.trips[0].tasks.some((t) => t.key === `mine_${state.regular[0].id}`));
-  window.location.hash = '#/regular'; await tick();
-  assert.match(text(), /Take my football scarf/);
+  assert.doesNotMatch(text(), /Regular tasks|#\/regular/, 'no regular tasks page or link');
+  assert.ok(!document.body.innerHTML.includes('#/regular'));
+
+  // removing a task asks how far the removal should go
+  const row = $$('.task').find((li) => /Take my football scarf/.test(li.textContent));
+  if (row.querySelector('[data-action="expand"]').getAttribute('aria-expanded') !== 'true') { row.querySelector('[data-action="expand"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await tick(); }
+  const clickIn = async (li, sel) => { li.querySelector(sel).dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await tick(50); };
+  await clickIn($$('.task').find((li) => /Take my football scarf/.test(li.textContent)), '[data-action="delete-task"]');
+  assert.match(text(), /Remove this task from:/);
+  await clickIn($$('.task').find((li) => /Remove this task from/.test(li.textContent)), '[data-action="del-this"]');
+  assert.ok(!state.trips[0].tasks.some((t) => t.title === 'Take my football scarf'), 'gone from this trip');
+  assert.equal(state.regular.length, 1, 'still kept for future trips when only this trip was chosen');
+  assert.ok(state.trips[0].options.dismissed.includes(`mine_${state.regular[0].id}`));
+
+  // standard task, all work trips going forward
+  const std = $$('.task').find((li) => /Pack deodorant/.test(li.textContent));
+  if (std.querySelector('[data-action="expand"]').getAttribute('aria-expanded') !== 'true') { std.querySelector('[data-action="expand"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await tick(); }
+  await clickIn($$('.task').find((li) => /Pack deodorant/.test(li.textContent)), '[data-action="delete-task"]');
+  await clickIn($$('.task').find((li) => /Remove this task from/.test(li.textContent)), '[data-action="del-type"]');
+  assert.ok(!state.trips[0].tasks.some((t) => t.key === 'deodorant'));
+  assert.ok(state.regular.some((r) => r.suppress === 'deodorant' && r.types.includes('work')));
 });

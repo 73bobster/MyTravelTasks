@@ -102,11 +102,16 @@ export function normaliseTrip(input = {}) {
       childConsent: !!o.childConsent,
       pets: pick(o.pets, PETS, 'none'),
       workActivity: pick(o.workActivity, ['meetings', 'handson', 'unsure'], 'unsure'),
+      dismissed: [...new Set((Array.isArray(o.dismissed) ? o.dismissed : []).map((k) => str(k, 80)).filter(Boolean))].slice(0, 100),
     },
   };
 }
 
-// Regular tasks: "add this to every <type> trip". Shared by the app and the API.
+// Standard tasks a person has removed for good. Per-person keys (passport@rob) are matched by their base so it works on every trip.
+export const suppressKey = (key) => (/^(passport|visa|pack_child|entry_other|form_[a-z-]+)@/.test(key) ? key.split('@')[0] : key);
+const suppressed = (key, set) => set.has(key) || set.has(suppressKey(key));
+
+// Regular tasks: "add this to every <type> trip", and tasks removed for good. Shared by the app and the API.
 export const REGULAR_WHEN = ['any', 'uk', 'abroad'];
 export function normaliseRegular(list) {
   const seen = new Set();
@@ -116,9 +121,10 @@ export function normaliseRegular(list) {
     let id = str(r?.id, 40).replace(/[^A-Za-z0-9_-]/g, '');
     if (!id || seen.has(id)) id = `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
     seen.add(id);
+    const suppress = str(r?.suppress, 80);
     const types = [...new Set((Array.isArray(r.types) ? r.types : []).filter((t) => TRIP_TYPES.some((x) => x.id === t)))];
     const days = Math.min(60, Math.max(0, Math.trunc(Number(r.days)) || 0));
-    return { id, title, types, when: pick(r.when, REGULAR_WHEN, 'any'), days };
+    return { id, title, types, when: pick(r.when, REGULAR_WHEN, 'any'), days, ...(suppress ? { suppress } : {}) };
   }).filter(Boolean);
 }
 
@@ -470,11 +476,18 @@ export function generateTasks(tripInput, today = todayISO(), entry = null, regul
   if (work) add('expenses_claim', 'Submit expenses and receipts', 'Afterwards', 3, { anchor: 'end' });
 
   // The person's own regular tasks for this kind of trip
-  for (const r of normaliseRegular(regular)) {
+  const regularList = normaliseRegular(regular);
+  for (const r of regularList) {
+    if (r.suppress) continue;
     if (r.types.length && !r.types.includes(trip.type)) continue;
     if (r.when !== 'any' && r.when !== trip.scope) continue;
-    add(`mine_${r.id}`, r.title, 'My tasks', -r.days, { hint: 'From your regular tasks.' });
+    add(`mine_${r.id}`, r.title, 'My tasks', -r.days, { hint: 'Added because you asked for it on every trip like this.' });
   }
+
+  // Removed for this trip, or for good
+  const gone = new Set(o.dismissed);
+  for (const r of regularList) if (r.suppress && (!r.types.length || r.types.includes(trip.type))) gone.add(r.suppress);
+  if (gone.size) return out.filter((t) => !suppressed(t.key, gone));
 
   return out;
 }
