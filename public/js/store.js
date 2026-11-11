@@ -5,14 +5,35 @@ const CACHE_KEY = 'mtt.cache.v1';
 const USER_KEY = 'mtt.user.v1';
 const uid = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
+// Demo mode keeps the sample trips in sessionStorage under their own names, so closing the tab discards them
+// and a visitor's real guest trips (localStorage) are never touched.
+const DEMO_FLAG = 'mtt.demo.active';
+const DEMO_PREFIX = 'demo.';
+let demoOn = false;
+const dkey = (key) => (demoOn && (key === GUEST_KEY || key.startsWith('mtt.regular')) ? DEMO_PREFIX + key : key);
+const area = (key) => (demoOn && key.startsWith(DEMO_PREFIX) ? sessionStorage : localStorage);
+export const demoActive = () => demoOn;
+export function resumeDemoIfActive() {
+  try { demoOn = sessionStorage.getItem(DEMO_FLAG) === '1'; } catch { demoOn = false; }
+  return demoOn;
+}
+export function startDemoStorage() { try { sessionStorage.setItem(DEMO_FLAG, '1'); } catch { /* ignore */ } demoOn = true; }
+export function endDemoStorage() {
+  try { sessionStorage.removeItem(DEMO_FLAG); sessionStorage.removeItem(DEMO_PREFIX + GUEST_KEY); sessionStorage.removeItem(DEMO_PREFIX + 'mtt.regular.v1'); } catch { /* ignore */ }
+  demoOn = false;
+}
+
 function read(key, fallback) {
-  try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; }
+  const k = dkey(key);
+  try { const v = JSON.parse(area(k).getItem(k)); return v ?? fallback; } catch { return fallback; }
 }
 function write(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+  const k = dkey(key);
+  try { area(k).setItem(k, JSON.stringify(value)); return true; } catch { return false; }
 }
 function remove(key) {
-  try { localStorage.removeItem(key); } catch { /* ignore */ }
+  const k = dkey(key);
+  try { area(k).removeItem(k); } catch { /* ignore */ }
 }
 
 export const guestTrips = () => read(GUEST_KEY, { trips: [] }).trips;

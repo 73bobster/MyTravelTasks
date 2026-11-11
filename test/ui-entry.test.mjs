@@ -9,7 +9,7 @@ window.scrollTo = () => {};
 window.confirm = () => true;
 const g = globalThis;
 g.__MTT_TEST__ = true;
-for (const k of ['window', 'document', 'location', 'localStorage', 'FormData', 'Blob', 'Event', 'HTMLElement']) {
+for (const k of ['window', 'document', 'location', 'localStorage', 'sessionStorage', 'File', 'FormData', 'Blob', 'Event', 'HTMLElement']) {
   Object.defineProperty(g, k, { value: k === 'window' ? window : window[k], configurable: true, writable: true });
 }
 Object.defineProperty(g, 'navigator', { value: window.navigator, configurable: true });
@@ -165,4 +165,20 @@ test('UI: document-friendly tasks show an add-document panel with the right defa
   await addDoc2({ owner: 'guest', level: 'trip', tripId, taskKey: key, kind: 'booking', label: 'Hotel confirmation' }, new window.File([new Uint8Array(100)], 'h.pdf', { type: 'application/pdf' }));
   state.docs = await allDocs2(); window.dispatchEvent(new window.Event('hashchange')); await tick();
   assert.match(text(), /1 document/); assert.match(text(), /Hotel confirmation/);
+});
+
+test('UI: demo mode loads sample trips and sample documents, keeps real guest trips apart, and exit cleans up', async () => {
+  window.location.hash = '#/'; await tick();
+  const realBefore = state.trips.length;
+  window.location.hash = '#/demo'; await tick(400);
+  assert.equal(state.demo, true);
+  assert.equal(state.trips.length, 6);
+  assert.match(text(), /Demo · sample trips/);
+  assert.ok(state.docs.some((d) => d.owner === 'demo' && d.level === 'person' && d.kind === 'insurance'), 'sample policy saved');
+  assert.ok(state.docs.some((d) => d.owner === 'demo' && d.level === 'trip'), 'sample ticket saved');
+  await click('[data-action="exit-demo"]'); await tick(100);
+  assert.equal(state.demo, false);
+  assert.equal(state.trips.length, realBefore, 'real guest trips untouched');
+  assert.ok(!state.docs.some((d) => d.owner === 'demo'), 'demo documents deleted');
+  assert.doesNotMatch(text(), /Demo · sample trips/);
 });

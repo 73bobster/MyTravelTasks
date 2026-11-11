@@ -208,3 +208,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid var(--sky); borde
 .doc-form { margin-top: .6rem; }
 .docs details { margin-top: .6rem; }
 .docs summary { cursor: pointer; font-weight: 700; }
+
+/* ---------- demo mode ---------- */
+.demo-bar { position: sticky; top: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .8rem; padding: .55rem 1rem; background: #FFF4CC; color: #3b2f00; border-bottom: 1px solid #E8D48A; font-size: .9rem; }
+.demo-actions { display: flex; gap: .5rem; flex-wrap: wrap; }

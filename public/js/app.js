@@ -1,14 +1,16 @@
 import {
   TRIP_TYPES, TRANSPORT, normaliseRegular, suppressKey, generateTasks, mergeTasks, validateTrip, normaliseTrip, tripSummary, keyBlockers,
-  taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween,
+  taskRag, blockedBy, dueLabel, shortDate, groupByWhen, groupByStage, todayISO, daysBetween, addDays,
 } from './core.js';
 import {
   KINDS, kindLabel, addDoc, allDocs, removeDoc, removeWhere, moveOwner, docsForTrip, coverCheck, missingInsurance, sizeLabel, persistent, docBlob, docKindFor, taskDocs,
 } from './docs.js';
+import { seedDemo, samplePdf } from './demo.js';
 import { loadRules, loadAlerts, entryFor, CONFIDENCE, DISCLAIMER, FCDO_INDEX } from './entry.js';
 import {
   GuestStore, ApiStore, getSession, forgetSession, importGuestTrips, guestTrips, api, applyPatch,
   loadRegular, saveRegular, clearGuestRegular, loadGuestRegular,
+  resumeDemoIfActive, startDemoStorage, endDemoStorage,
 } from './store.js';
 
 const COUNTRIES = ['Albania', 'Australia', 'Austria', 'Belgium', 'Bulgaria', 'Canada', 'Croatia', 'Cyprus', 'Czechia', 'Denmark',
@@ -21,7 +23,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [], repeatPrompt: null, deletePrompt: null,
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [], repeatPrompt: null, deletePrompt: null, demo: false,
 };
 
 const $app = () => document.getElementById('app');
@@ -51,6 +53,7 @@ function route() {
   if (parts[0] === 'register') return { name: 'auth', mode: 'register' };
   if (parts[0] === 'account') return { name: 'account' };
   if (parts[0] === 'docs') return { name: 'docs' };
+  if (parts[0] === 'demo') return { name: 'demo' };
   return { name: 'home' };
 }
 
@@ -71,6 +74,9 @@ function layout(inner) {
     state.user ? '<a href="#/account">Account</a>' : '<a href="#/signin">Sign in</a>',
   ].join('');
   return `
+    ${state.demo ? `<div class="demo-bar" role="status"><span><strong>Demo</strong> · sample trips for you to explore. Nothing is kept when you leave.</span>
+      <span class="demo-actions"><button type="button" class="btn btn-secondary btn-small" data-action="exit-demo">Exit demo</button>
+      <button type="button" class="btn btn-primary btn-small" data-action="exit-demo-register">Create a free account</button></span></div>` : ''}
     ${state.offline ? '<div class="offline-bar" role="status">You are offline. You can read your trips; changes need a connection.</div>' : ''}
     <header class="app-header"><div class="container">
       <a class="brand" href="#/"><img src="/icons/icon-192.png" alt="" width="30" height="30"> My Travel Tasks</a>
@@ -88,7 +94,7 @@ function viewHome() {
     .map((t) => ({ t, s: tripSummary(t, t.tasks, today) }))
     .sort((a, b) => (a.s.finished - b.s.finished) || a.t.startDate.localeCompare(b.t.startDate));
 
-  const banner = state.user ? '' : `
+  const banner = state.user || state.demo ? '' : `
     <section class="card tint" aria-label="Guest mode">
       <h2>You're using My Travel Tasks as a guest</h2>
       <p class="small">Your trips are saved on this device only. Create a free account to keep them safe and open them on any device.</p>
@@ -100,7 +106,8 @@ function viewHome() {
       <section class="card empty">
         <h2>Where are you off to?</h2>
         <p class="muted">Answer a few questions about your trip and get a dated checklist, a countdown and a clear view of what is still holding you up.</p>
-        <a class="btn btn-primary" href="#/new">Plan your first trip</a>
+        <div class="actions"><a class="btn btn-primary" href="#/new">Plan your first trip</a>
+        ${state.user || state.demo ? '' : '<a class="btn btn-secondary" href="#/demo">Try the demo with sample trips</a>'}</div>
       </section></div>`;
   }
 
@@ -238,7 +245,7 @@ function viewEntryCard(trip) {
 }
 
 // ---------- documents (kept on this device) ----------
-const docOwner = () => (state.user ? String(state.user.id ?? state.user.email ?? 'account') : 'guest');
+const docOwner = () => (state.demo ? 'demo' : state.user ? String(state.user.id ?? state.user.email ?? 'account') : 'guest');
 async function refreshDocs() { try { state.docs = await allDocs(); } catch { state.docs = []; } }
 const NOTE_PRIVATE = 'Saved on this device only, not uploaded. Please don\'t save passport or ID scans: officers need the real passport, and a lost phone would expose them.';
 
@@ -691,6 +698,7 @@ function viewAuth(mode) {
       <div class="actions"><button class="btn btn-primary" type="submit" ${state.busy ? 'disabled' : ''}>${state.busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}</button></div>
     </form>
     <p class="small">${register ? 'Already have an account? <a href="#/signin">Sign in</a>' : 'New here? <a href="#/register">Create a free account</a>'}</p>
+    <p class="small">Just looking? <a href="#/demo">Try the demo with sample trips</a>. No account needed.</p>
   </div>`;
 }
 
@@ -736,6 +744,10 @@ export function render() {
   if (state.deletePrompt && !(r.name === 'trip' && r.id === state.deletePrompt.tripId)) state.deletePrompt = null;
   if (state.repeatPrompt && !(r.name === 'trip' && r.id === state.repeatPrompt.tripId)) state.repeatPrompt = null;
 
+  if (r.name === 'demo') {
+    if (state.ready && !state.demo && !state.user) enterDemo(); else if (state.ready) location.hash = state.user ? '#/' : '#/';
+    return;
+  }
   let html;
   let title = 'My Travel Tasks';
   if (!state.ready) html = '<p class="muted">Loading…</p>';
@@ -825,6 +837,7 @@ async function submitAuth(form) {
   const mode = form.dataset.mode;
   const fd = new FormData(form);
   state.busy = true; state.authError = ''; render();
+  if (state.demo) { endDemoStorage(); state.demo = false; await purgeDemoDocs(); }
   try {
     const { user } = await api(mode === 'register' ? '/auth/register' : '/auth/login', {
       method: 'POST', body: { email: fd.get('email'), password: fd.get('password'), name: fd.get('name') || '' },
@@ -858,6 +871,44 @@ async function submitAuth(form) {
   } catch (e) {
     state.busy = false; state.authError = e.message; render();
   }
+}
+
+// ---------- demo mode ----------
+async function purgeDemoDocs() { await removeWhere((d) => d.owner === 'demo'); }
+
+async function enterDemo() {
+  if (state.user) return;
+  endDemoStorage(); await purgeDemoDocs();
+  startDemoStorage();
+  state.demo = true; state.store = new GuestStore(); state.regular = [];
+  try {
+    state.rules = state.rules || await loadRules('GB');
+    const made = await seedDemo(state.store, state.rules, todayISO());
+    const pdf = (lines, name) => new File([samplePdf(lines)], name, { type: 'application/pdf' });
+    const edin = made.find((m) => m.docs)?.saved;
+    const tk = edin?.tasks.find((t) => t.key && t.key.startsWith('book_transport'))?.key;
+    if (edin && tk) {
+      await addDoc({ owner: 'demo', level: 'trip', tripId: edin.id, taskKey: tk, kind: 'ticket', label: 'Edinburgh train tickets (sample)' },
+        pdf(['SAMPLE TICKET', 'Not a real ticket. Demo document only.', 'Edinburgh Waverley, outbound and return'], 'sample-ticket.pdf'));
+    }
+    await addDoc({ owner: 'demo', level: 'person', person: 'Alex', kind: 'insurance', label: 'Annual travel insurance (sample)', validFrom: addDays(todayISO(), -120), expires: addDays(todayISO(), 245) },
+      pdf(['SAMPLE INSURANCE POLICY', 'Not a real policy. Demo document only.'], 'sample-policy.pdf'));
+  } catch (e) { toast(e.message || 'Could not load the demo.'); }
+  await loadTrips(); await refreshDocs();
+  location.hash = '#/';
+  render();
+  toast('Demo loaded: have a look around');
+}
+
+async function exitDemo(goTo = '#/') {
+  endDemoStorage(); await purgeDemoDocs();
+  state.demo = false; state.store = new GuestStore();
+  state.regular = await loadRegular(null);
+  await loadTrips(); await refreshDocs();
+  state.draft = null;
+  location.hash = goTo;
+  render();
+  toast('Demo closed. Nothing was kept.');
 }
 
 async function signOut() {
@@ -958,6 +1009,8 @@ function onClick(e) {
       }
       break;
     }
+    case 'exit-demo': exitDemo('#/'); break;
+    case 'exit-demo-register': exitDemo('#/register'); break;
     case 'repeat-type': chooseRepeat('type'); break;
     case 'repeat-all': chooseRepeat('all'); break;
     case 'repeat-no': chooseRepeat('no'); break;
@@ -1054,9 +1107,11 @@ function onSubmit(e) {
 
 // ---------- boot ----------
 export async function boot() {
-  const { user, offline } = await getSession();
+  state.demo = resumeDemoIfActive();               // a reload inside the demo stays in the demo
+  const { user, offline } = state.demo ? { user: null, offline: false } : await getSession();
   state.user = user;
   state.store = user ? new ApiStore() : new GuestStore();
+  if (!state.demo) await purgeDemoDocs();           // demo files left behind by a closed tab
   loadAlerts().then((a) => { state.alerts = a; if (state.ready) safeRender(); });
   loadRules('GB').then((r) => { state.rules = r; if (state.ready) safeRender(); });
   await refreshDocs();
