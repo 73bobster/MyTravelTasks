@@ -122,3 +122,9 @@ test('packing and work tasks added; parking only when chosen; work tasks only on
   const h = keys(trip({ type: 'holiday', options: { stay: 'none' } }));
   assert.ok(!h.includes('work_clothes') && !h.includes('book_parking') && !h.includes('first_day_kit') && h.includes('toothbrush'));
 });
+test('stay "not required" (day trip) adds no accommodation, first-day or check-out tasks', () => {
+  const keys = generateTasks(trip({ scope: 'uk', country: '', type: 'holiday', startDate: '2026-11-20', endDate: '2026-11-20', options: { stay: 'notrequired' } }), TODAY).map((x) => x.key);
+  for (const k of ['book_stay', 'stay_confirm', 'first_day_kit', 'checkout']) assert.ok(!keys.includes(k), k);
+  assert.ok(keys.includes('pack') && keys.includes('final_check'));
+  assert.equal(normaliseTrip({ options: { stay: 'bogus' } }).options.stay, 'need');
+});

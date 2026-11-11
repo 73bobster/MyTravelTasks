@@ -20,7 +20,7 @@ export const CATEGORY_ORDER = ['Plan', 'Documents', 'Book', 'Prepare', 'Travel d
 const DAY = 86400000;
 const ROLES = ['adult', 'child', 'infant'];
 const PASSPORT = ['yes', 'no', 'unsure'];
-const STAY = ['need', 'booked', 'none'];
+const STAY = ['need', 'booked', 'none', 'notrequired'];
 const PETS = ['none', 'sitter', 'travelling'];
 
 // ---------- dates (all calendar-date strings, YYYY-MM-DD) ----------
@@ -425,7 +425,7 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
   add('deodorant', 'Pack deodorant', 'Prepare', -1, {
     hint: o.handLuggageOnly ? 'Aerosols and roll-ons count as liquids in hand luggage: 100ml or less, in a clear bag.' : '',
   });
-  if (o.stay !== 'none') {
+  if (o.stay === 'need' || o.stay === 'booked') {
     add('first_day_kit', 'Pack first-day essentials for the accommodation: teabags or coffee, sugar, snacks, a mug', 'Prepare', -2, {
       hint: 'So you are not hunting for a shop on arrival. Check what the accommodation already provides.',
     });
@@ -448,7 +448,7 @@ export function generateTasks(tripInput, today = todayISO(), entry = null) {
   // Return
   if (flying) add('return_checkin', 'Check in online for the return journey', 'Return', -1, { anchor: 'end', dependsOn: ['book_transport'] });
   if (modes.some((m) => m !== 'car')) add('return_transport', 'Confirm how you get home from the ' + hub + ' (parking, taxi or lift)', 'Return', -3, { anchor: 'end' });
-  if (o.stay !== 'none') add('checkout', 'Check out, collect belongings and leave in good time', 'Return', 0, { anchor: 'end' });
+  if (o.stay === 'need' || o.stay === 'booked') add('checkout', 'Check out, collect belongings and leave in good time', 'Return', 0, { anchor: 'end' });
 
   // Afterwards
   if (work) add('expenses_claim', 'Submit expenses and receipts', 'Afterwards', 3, { anchor: 'end' });

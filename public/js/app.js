@@ -534,6 +534,7 @@ function viewForm(editingId) {
           ${radio('options.stay', 'need', 'Still to book', '', o.stay)}
           ${radio('options.stay', 'booked', 'Already booked', '', o.stay)}
           ${radio('options.stay', 'none', 'Staying with friends or family', '', o.stay)}
+          ${radio('options.stay', 'notrequired', 'Not required', 'For example a day trip', o.stay)}
         </div>
       </div>
       <div class="choices">
