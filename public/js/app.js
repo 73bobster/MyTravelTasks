@@ -21,7 +21,7 @@ const state = {
   ready: false, user: null, store: null, trips: [], offline: false,
   view: 'when', owner: 'all', open: new Set(),
   draft: null, draftFor: null, formErrors: [], busy: false, authError: '',
-  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [],
+  toast: '', installEvent: null, lastKey: '', rules: null, alerts: null, docs: [], regular: [], repeatPrompt: null,
 };
 
 const $app = () => document.getElementById('app');
@@ -106,7 +106,7 @@ function viewHome() {
   }
 
   return `<div class="stack">
-    <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/regular">Regular tasks</a><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
+    <div class="row between"><h1>Your trips</h1><span class="row"><a class="btn btn-secondary" href="#/docs">My documents</a><a class="btn btn-primary" href="#/new">Plan a trip</a></span></div>
     ${banner}
     ${rows.map(({ t, s }) => `
       <a class="card trip-card" href="#/trip/${esc(t.id)}">
@@ -337,6 +337,37 @@ function openDoc(id) {
   setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
 
+function viewRepeatPrompt(trip) {
+  const p = state.repeatPrompt;
+  if (!p || p.tripId !== trip.id) return '';
+  const typeLabel = (TRIP_TYPES.find((t) => t.id === p.type)?.label || 'trip').toLowerCase();
+  return `<section class="card tint repeat-prompt" role="status" aria-label="Keep this task for future trips">
+    <h3>Add "${esc(p.title)}" to your other trips too?</h3>
+    <p class="small">It will be added to your checklist whenever you plan or edit a matching trip. It stays private to you.</p>
+    <div class="actions">
+      <button type="button" class="btn btn-primary btn-small" data-action="repeat-type">Every ${esc(typeLabel)} I plan</button>
+      <button type="button" class="btn btn-secondary btn-small" data-action="repeat-all">Every trip I plan</button>
+      <button type="button" class="btn btn-ghost btn-small" data-action="repeat-no">Just this trip</button>
+    </div>
+    <p class="small muted">You can change this later under <a href="#/regular">Regular tasks</a>.</p>
+  </section>`;
+}
+
+async function chooseRepeat(kind) {
+  const p = state.repeatPrompt;
+  state.repeatPrompt = null;
+  if (!p || kind === 'no') { render(); return; }
+  try {
+    await saveRegularList([...state.regular, { title: p.title, types: kind === 'type' ? [p.type] : [], when: 'any', days: p.days }]);
+    await state.store.removeTask(p.tripId, p.taskId);   // the saved regular task replaces the one-off copy
+    const trip = findTrip(p.tripId);
+    trip.tasks = trip.tasks.filter((t) => t.id !== p.taskId);
+    await regenerateTrip(p.tripId);
+    render();
+    toast('Saved for your future trips');
+  } catch (e) { render(); toast(e.message); }
+}
+
 function viewTrip(id) {
   const trip = findTrip(id);
   if (!trip) return `<div class="card empty"><h2>We can't find that trip</h2><p class="muted">It may have been deleted, or it lives in a different account.</p><a class="btn btn-primary" href="#/">Back to your trips</a></div>`;
@@ -402,6 +433,7 @@ function viewTrip(id) {
 
     ${list || '<p class="muted">No tasks for this person.</p>'}
 
+    ${viewRepeatPrompt(trip)}
     <details class="card add-task">
       <summary>Add your own task</summary>
       <form data-form="add-task" data-id="${esc(trip.id)}">
@@ -410,15 +442,9 @@ function viewTrip(id) {
           <label class="field">Who<select name="owner">${ownerList(trip).map((o) => `<option>${esc(o)}</option>`).join('')}</select></label>
           <label class="field">Due<input type="date" name="dueDate"></label>
         </div>
-        <label class="field">Repeat
-          <select name="repeat">
-            <option value="trip">This trip only</option>
-            <option value="type">Every ${esc((TRIP_TYPES.find((t) => t.id === trip.type)?.label || 'trip').toLowerCase())} I plan</option>
-            <option value="all">Every trip I plan</option>
-          </select>
-          <span class="help">Repeating tasks are kept in <a href="#/regular">Regular tasks</a> and added whenever you plan or edit a matching trip.</span></label>
         <div><button class="btn btn-primary btn-small" type="submit">Add task</button></div>
       </form>
+      <p class="small muted"><a href="#/regular">Regular tasks</a>: tasks you've chosen to add to future trips.</p>
     </details>
 
     <div class="actions">
@@ -621,6 +647,7 @@ export function render() {
   const r = route();
   if (r.name !== 'new' && r.name !== 'edit') { state.draft = null; state.draftFor = null; state.formErrors = []; }
   if (r.name !== 'auth' && r.name !== 'account') state.authError = '';
+  if (state.repeatPrompt && !(r.name === 'trip' && r.id === state.repeatPrompt.tripId)) state.repeatPrompt = null;
 
   let html;
   let title = 'My Travel Tasks';
@@ -789,24 +816,14 @@ async function addTask(form) {
   const fd = new FormData(form);
   const title = String(fd.get('title') || '').trim();
   if (!title) return;
-  const repeat = String(fd.get('repeat') || 'trip');
-  const trip0 = findTrip(tripId);
-  if (repeat !== 'trip' && trip0) {
-    try {
-      const due = fd.get('dueDate');
-      const days = due ? Math.max(0, daysBetween(due, trip0.startDate)) : 1;
-      await saveRegularList([...state.regular, { title, types: repeat === 'type' ? [trip0.type] : [], when: 'any', days }]);
-      await regenerateTrip(tripId);
-      render();
-      toast('Added, and kept for future trips');
-    } catch (e) { toast(e.message); }
-    return;
-  }
   try {
     const task = await state.store.addTask(tripId, {
       title, category: 'My tasks', owner: fd.get('owner') || 'Everyone', dueDate: fd.get('dueDate') || null, notes: '',
     });
-    findTrip(tripId).tasks.push(task);
+    const trip = findTrip(tripId);
+    trip.tasks.push(task);
+    const due = task.dueDate;
+    state.repeatPrompt = { tripId, taskId: task.id, title, days: due ? Math.max(0, Math.min(60, daysBetween(due, trip.startDate))) : 1, type: trip.type };
     render();
     toast('Task added');
   } catch (e) { toast(e.message); }
@@ -877,6 +894,9 @@ function onClick(e) {
         state.store.removeTask(r.id, id).then(() => { trip.tasks = trip.tasks.filter((t) => t.id !== id); render(); }).catch((err) => toast(err.message));
       }
       break;
+    case 'repeat-type': chooseRepeat('type'); break;
+    case 'repeat-all': chooseRepeat('all'); break;
+    case 'repeat-no': chooseRepeat('no'); break;
     case 'remove-regular':
       saveRegularList(state.regular.filter((x) => x.id !== id)).then(render).catch((err) => toast(err.message));
       break;

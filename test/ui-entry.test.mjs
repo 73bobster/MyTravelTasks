@@ -94,3 +94,24 @@ test('UI: My documents screen and the trip Documents section', async () => {
   assert.equal($$('[style]').length, 0);
   console.log('ok  documents');
 });
+
+test('UI: adding your own task asks whether to keep it for future trips', async () => {
+  window.location.hash = '#/'; await tick();
+  assert.ok(!$('a[href="#/regular"]'), 'no Regular tasks button on the home screen');
+  const tripId = state.trips[0].id;
+  window.location.hash = `#/trip/${tripId}`; await tick();
+  assert.doesNotMatch(text(), /to your other trips too/);
+  const form = $('form[data-form="add-task"]');
+  form.querySelector('[name="title"]').value = 'Take my football scarf';
+  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })); await tick(50);
+  assert.match(text(), /Add "Take my football scarf" to your other trips too\?/);
+  const before = state.trips[0].tasks.filter((t) => t.title === 'Take my football scarf').length;
+  assert.equal(before, 1);
+  await click('[data-action="repeat-type"]'); await tick(50);
+  assert.doesNotMatch(text(), /to your other trips too/, 'prompt closes');
+  assert.equal(state.regular.length, 1); assert.deepEqual(state.regular[0].types, ['work']);
+  assert.equal(state.trips[0].tasks.filter((t) => t.title === 'Take my football scarf').length, 1, 'no duplicate on this trip');
+  assert.ok(state.trips[0].tasks.some((t) => t.key === `mine_${state.regular[0].id}`));
+  window.location.hash = '#/regular'; await tick();
+  assert.match(text(), /Take my football scarf/);
+});
