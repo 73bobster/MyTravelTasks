@@ -241,6 +241,8 @@ const docOwner = () => (state.user ? String(state.user.id ?? state.user.email ??
 async function refreshDocs() { try { state.docs = await allDocs(); } catch { state.docs = []; } }
 const NOTE_PRIVATE = 'Saved on this device only, not uploaded. Please don\'t save passport or ID scans: officers need the real passport, and a lost phone would expose them.';
 
+const NOTE_LOSS = 'If this device is lost, stolen, broken or reset, or you clear your browser data, these files are lost with it. Keep the originals somewhere else too, such as your email, cloud storage or paper.';
+
 function docList(docs, { person = false } = {}) {
   if (!docs.length) return '';
   return `<ul class="doc-list">${docs.map((d) => `<li>
@@ -272,6 +274,7 @@ function docForm(level, tripId = '') {
       <label class="field">Valid from<input type="date" name="validFrom"><span class="help">Optional. Lets us check it covers a trip.</span></label>
       <label class="field">Valid to<input type="date" name="expires"></label></div>` : ''}
     <label class="field">Photo or PDF<input type="file" name="file" accept="image/*,application/pdf"><span class="help">Take a photo or choose a file, up to 15 MB.</span></label>
+    <p class="warn small"><strong>Saved on this device only.</strong> ${esc(NOTE_LOSS)}</p>
     <div><button class="btn btn-primary btn-small" type="submit">Save on this device</button></div>
   </form>`;
 }
@@ -283,6 +286,7 @@ function viewTripDocs(trip) {
   return `<section class="card docs" aria-label="Documents">
     <h2>Documents</h2>
     <p class="small muted">${esc(NOTE_PRIVATE)}</p>
+    <p class="warn small">${esc(NOTE_LOSS)}</p>
     ${persistent ? '' : '<p class="warn small">This browser is not keeping files between visits (private mode?), so they will be lost when you close it.</p>'}
     ${noIns.length ? `<p class="notice small">No travel insurance saved for ${esc(noIns.join(', '))}. A policy saved once under <a href="#/docs">My documents</a> is used for every trip.</p>` : ''}
     ${warns.map(({ d }) => `<p class="warn small"><strong>${esc(d.person)}'s ${esc(d.label)} does not cover the whole trip</strong> (${esc(shortDate(trip.startDate))} to ${esc(shortDate(trip.endDate))}). Check its dates.</p>`).join('')}
@@ -300,6 +304,7 @@ function viewDocs() {
   return `<div class="stack">
     <div><a href="#/" class="small">← All trips</a></div>
     <h1>My documents</h1>
+    <p class="warn"><strong>Saved on this device only.</strong> ${esc(NOTE_LOSS)}</p>
     <p class="notice">${esc(NOTE_PRIVATE)} Save a document here once, such as annual travel insurance, and every trip with that person on it can use it. Tickets and bookings are added from the trip itself.</p>
     ${persistent ? '' : '<p class="warn small">This browser is not keeping files between visits (private mode?), so they will be lost when you close it.</p>'}
     ${byPerson.length ? byPerson.map((n) => `<section class="card"><h2>${esc(n)}</h2>${docList(people.filter((d) => (d.person || 'Unnamed') === n))}</section>`).join('') : '<div class="card empty"><p class="muted">Nothing saved yet.</p></div>'}

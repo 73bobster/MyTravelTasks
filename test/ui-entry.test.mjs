@@ -82,6 +82,7 @@ test('UI: My documents screen and the trip Documents section', async () => {
   window.location.hash = '#/docs'; await tick();
   assert.match(text(), /My documents/); assert.match(text(), /Annual policy/); assert.match(text(), /Saved on this device only, not uploaded/);
   assert.ok($('form[data-form="doc"][data-level="person"] input[type="file"]'), 'add form');
+  assert.match($('form[data-form="doc"]').textContent, /If this device is lost, stolen, broken or reset/, 'loss warning beside the save button');
   const tripId = state.trips[0].id;
   window.location.hash = `#/trip/${tripId}`; await tick();
   assert.match(text(), /Reusable, from My documents/); assert.match(text(), /Annual policy/);
