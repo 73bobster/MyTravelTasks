@@ -1,6 +1,17 @@
 {
- "generatedAt": "2026-11-11",
- "changed": {},
+ "generatedAt": "2026-11-16",
+ "changed": {
+  "portugal": {
+   "updated": "2026-11-12",
+   "change": "Removal of information on severe weather",
+   "checked": "2026-11-11"
+  },
+  "usa": {
+   "updated": "2026-11-14",
+   "change": "Updated information on air traffic disruptions across the US",
+   "checked": "2026-11-11"
+  }
+ },
  "broken": [],
  "unknownLinks": 4,
  "adviceErrors": []
