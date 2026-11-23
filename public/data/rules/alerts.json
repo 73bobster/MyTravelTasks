@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-16",
+ "generatedAt": "2026-11-23",
  "changed": {
   "portugal": {
    "updated": "2026-11-12",
@@ -7,12 +7,31 @@
    "checked": "2026-11-11"
   },
   "usa": {
-   "updated": "2026-11-14",
-   "change": "Updated information on air traffic disruptions across the US",
+   "updated": "2026-11-20",
+   "change": "Removal of information about air traffic disruptions across the US",
+   "checked": "2026-11-11"
+  },
+  "turkey": {
+   "updated": "2026-11-18",
+   "change": "Updated information about regional tensions (See ‘Warnings and insurance’ page).",
+   "checked": "2026-11-11"
+  },
+  "united-arab-emirates": {
+   "updated": "2026-11-18",
+   "change": "Updated information about regional tensions (See ‘Warnings and insurance’ page). ",
    "checked": "2026-11-11"
   }
  },
- "broken": [],
- "unknownLinks": 4,
+ "broken": [
+  {
+   "url": "https://www.mfa.gov.tr/visa-information-for-foreigners.en.mfa",
+   "label": "Turkish Ministry of Foreign Affairs: visa information for foreigners",
+   "rules": [
+    "turkey"
+   ],
+   "status": 404
+  }
+ ],
+ "unknownLinks": 3,
  "adviceErrors": []
 }
